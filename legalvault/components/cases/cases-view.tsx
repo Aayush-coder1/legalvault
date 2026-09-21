@@ -54,9 +54,9 @@ export function CasesView({ initialCases }: { initialCases: LegalCase[] }) {
           { label: "Open", value: openCount },
           { label: "In progress", value: activeCount },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-gray-950">{s.value}</p>
+          <div key={s.label} className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+            <p className="text-xs font-medium tracking-widest text-zinc-500 uppercase">{s.label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-white">{s.value}</p>
           </div>
         ))}
       </div>
@@ -64,7 +64,7 @@ export function CasesView({ initialCases }: { initialCases: LegalCase[] }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 flex-col gap-3 sm:flex-row">
           <div className="relative flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-600" aria-hidden />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}

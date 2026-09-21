@@ -23,7 +23,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
         <Link
           href={ROUTES.dashboard}
-          className="mb-4 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium text-gray-600 outline-none transition-colors hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-gray-950"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium text-zinc-400 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/70"
         >
           <ArrowLeft className="size-3.5" aria-hidden /> Back to cases
         </Link>

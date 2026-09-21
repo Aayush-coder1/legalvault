@@ -76,7 +76,7 @@ export function CaseDetailView({ initialCase, initialEvidence }: { initialCase: 
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-xs text-gray-500">{legalCase.caseNumber}</p>
+              <p className="font-mono text-xs text-zinc-500">{legalCase.caseNumber}</p>
               <CardTitle className="mt-1 text-xl">{legalCase.title}</CardTitle>
               <CardDescription>Last updated {formatDateTime(legalCase.updatedAt)}</CardDescription>
             </div>
@@ -88,7 +88,7 @@ export function CaseDetailView({ initialCase, initialEvidence }: { initialCase: 
           </div>
         </CardHeader>
         <CardContent>
-          <p className="max-w-3xl text-sm leading-relaxed text-gray-700">{legalCase.description}</p>
+          <p className="max-w-3xl text-sm leading-relaxed text-zinc-400">{legalCase.description}</p>
         </CardContent>
       </Card>
 
@@ -106,7 +106,7 @@ export function CaseDetailView({ initialCase, initialEvidence }: { initialCase: 
           <CardHeader>
             <CardTitle>
               Evidence{" "}
-              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+              <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-zinc-300">
                 {evidence.length}
               </span>
             </CardTitle>

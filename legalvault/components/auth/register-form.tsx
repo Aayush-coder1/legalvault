@@ -6,17 +6,24 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/label";
+import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
 /** UI-only registration form. Wires to POST /api/auth/register once auth lands. */
 export function RegisterForm() {
   const router = useRouter();
+  const { signIn } = useSession();
   const [pending, setPending] = React.useState(false);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get("name") ?? "").trim();
+    const email = String(data.get("email") ?? "").trim();
+    if (!name || !email) return;
     setPending(true);
-    // UI foundation: navigate to the dashboard preview.
+    // Preview session: remember who registered so the header reflects them.
+    signIn({ name, email });
     router.push(ROUTES.dashboard);
   }
 
@@ -34,9 +41,9 @@ export function RegisterForm() {
       <Button type="submit" className="w-full" size="lg" disabled={pending}>
         {pending ? "Creating account…" : "Create account"}
       </Button>
-      <p className="text-center text-[13px] text-gray-500">
+      <p className="text-center text-[13px] text-zinc-500">
         Already have an account?{" "}
-        <Link href={ROUTES.login} className="font-medium text-gray-950 underline-offset-2 hover:underline">
+        <Link href={ROUTES.login} className="font-medium text-white underline-offset-4 hover:underline">
           Sign in
         </Link>
       </p>

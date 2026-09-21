@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Briefcase, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Brand } from "@/components/layout/brand";
-import { mockUser } from "@/lib/mock-data";
+import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
 const NAV = [
@@ -15,12 +15,16 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, workspace } = useSession();
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-gray-200 bg-white lg:flex">
-      <div className="flex h-16 items-center border-b border-gray-100 px-5">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-white/5 bg-black/40 lg:flex">
+      <div className="flex h-16 items-center border-b border-white/5 px-5">
         <Brand href={ROUTES.dashboard} />
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Dashboard">
+        <p className="px-3 pb-2 text-[11px] font-medium tracking-widest text-zinc-600 uppercase">
+          {workspace}
+        </p>
         {NAV.map((item) => {
           const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
@@ -30,7 +34,7 @@ export function Sidebar() {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-gray-100 text-gray-950" : "text-gray-600 hover:bg-gray-50 hover:text-gray-950",
+                active ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white",
               )}
             >
               <item.icon className="size-4" aria-hidden />
@@ -39,14 +43,14 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-gray-100 p-4">
+      <div className="border-t border-white/5 p-4">
         <div className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center rounded-full bg-gray-950 text-xs font-semibold text-white" aria-hidden>
-            {mockUser.name.charAt(0)}
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#e3b341] text-xs font-semibold text-zinc-950" aria-hidden>
+            {user.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium text-gray-950">{mockUser.name}</p>
-            <p className="truncate text-xs text-gray-500">{mockUser.email}</p>
+            <p className="truncate text-[13px] font-medium text-white">{user.name}</p>
+            <p className="truncate text-xs text-zinc-500">{user.email}</p>
           </div>
         </div>
       </div>

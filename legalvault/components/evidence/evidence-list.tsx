@@ -18,17 +18,17 @@ export function EvidenceList({
   onDelete: (id: string) => void;
 }) {
   return (
-    <ul className="divide-y divide-gray-100">
+    <ul className="divide-y divide-white/5">
       {items.map((item) => {
         const Icon = KIND_ICON[item.kind];
         return (
           <li key={item.id} className="flex items-center gap-3 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300">
               <Icon className="size-4" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-950">{item.fileName}</p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="truncate text-sm font-medium text-white">{item.fileName}</p>
+              <p className="mt-0.5 truncate font-mono text-xs text-zinc-500">
                 {item.mimeType} · {formatBytes(item.sizeBytes)} · {formatDateTime(item.uploadDate)}
               </p>
             </div>

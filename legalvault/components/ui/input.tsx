@@ -7,9 +7,9 @@ export function Input({ className, type = "text", ...props }: React.InputHTMLAtt
       type={type}
       data-slot="input"
       className={cn(
-        "h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400",
-        "outline-none transition-colors focus:border-gray-950 focus:ring-2 focus:ring-gray-950/10",
-        "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
+        "h-9 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 text-sm text-zinc-100 placeholder:text-zinc-600",
+        "outline-none transition-colors focus:border-white/30 focus:ring-2 focus:ring-white/10",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

@@ -5,7 +5,7 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
   return (
     <label
       data-slot="label"
-      className={cn("block text-[13px] font-medium text-gray-900", className)}
+      className={cn("block text-[13px] font-medium text-zinc-200", className)}
       {...props}
     />
   );
@@ -32,9 +32,9 @@ export function Field({
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {error ? (
-        <p className="text-[13px] text-red-600">{error}</p>
+        <p className="text-[13px] text-red-400">{error}</p>
       ) : hint ? (
-        <p className="text-[13px] text-gray-500">{hint}</p>
+        <p className="text-[13px] text-zinc-500">{hint}</p>
       ) : null}
     </div>
   );

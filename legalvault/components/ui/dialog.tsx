@@ -40,7 +40,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-gray-950/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -51,20 +51,20 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl",
+          "w-full max-w-lg rounded-xl border border-white/10 bg-zinc-900 shadow-2xl shadow-black/50",
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-white/5 px-5 py-4">
           <div>
-            <h2 className="text-[15px] font-semibold text-gray-950">{title}</h2>
-            {description ? <p className="mt-0.5 text-[13px] text-gray-500">{description}</p> : null}
+            <h2 className="text-[15px] font-semibold text-white">{title}</h2>
+            {description ? <p className="mt-0.5 text-[13px] text-zinc-500">{description}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="cursor-pointer rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="cursor-pointer rounded-md p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
           >
             <X className="size-4" />
           </button>

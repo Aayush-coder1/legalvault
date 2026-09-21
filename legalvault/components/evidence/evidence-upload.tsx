@@ -47,7 +47,7 @@ export function EvidenceUpload({
 
   return (
     <div>
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Upload type">
+      <div className="flex gap-1 rounded-lg bg-white/5 p-1" role="tablist" aria-label="Upload type">
         {(
           [
             { id: "file", label: "File upload", icon: FileUp },
@@ -62,7 +62,7 @@ export function EvidenceUpload({
             onClick={() => setTab(t.id)}
             className={cn(
               "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
-              tab === t.id ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-800",
+              tab === t.id ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-200",
             )}
           >
             <t.icon className="size-3.5" aria-hidden />
@@ -91,15 +91,17 @@ export function EvidenceUpload({
             handleFiles(e.dataTransfer.files);
           }}
           className={cn(
-            "mt-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-6 py-8 text-center transition-colors",
-            dragOver ? "border-gray-950 bg-gray-50" : "border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50/50",
+            "mt-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-6 py-8 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+            dragOver
+              ? "border-[#e3b341]/60 bg-[#e3b341]/5"
+              : "border-white/15 bg-transparent hover:border-white/25 hover:bg-white/[0.02]",
           )}
         >
-          <span className="flex size-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-white/5 text-zinc-300">
             <Upload className="size-5" aria-hidden />
           </span>
-          <p className="mt-3 text-sm font-medium text-gray-950">Drop files here or click to browse</p>
-          <p className="mt-1 text-[13px] text-gray-500">PDF, images, video · max {MAX_FILE_MB} MB per file</p>
+          <p className="mt-3 text-sm font-medium text-white">Drop files here or click to browse</p>
+          <p className="mt-1 text-[13px] text-zinc-500">PDF, images, video · max {MAX_FILE_MB} MB per file</p>
           <input
             ref={inputRef}
             type="file"

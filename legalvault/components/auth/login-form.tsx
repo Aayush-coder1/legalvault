@@ -6,17 +6,23 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/label";
+import { nameFromEmail, useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
 /** UI-only sign-in form. Wires to POST /api/auth/login once auth lands. */
 export function LoginForm() {
   const router = useRouter();
+  const { signIn } = useSession();
   const [pending, setPending] = React.useState(false);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const email = String(data.get("email") ?? "").trim();
+    if (!email) return;
     setPending(true);
-    // UI foundation: navigate to the dashboard preview.
+    // Preview session: remember who signed in so the header reflects them.
+    signIn({ name: nameFromEmail(email), email });
     router.push(ROUTES.dashboard);
   }
 
@@ -31,9 +37,9 @@ export function LoginForm() {
       <Button type="submit" className="w-full" size="lg" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
-      <p className="text-center text-[13px] text-gray-500">
+      <p className="text-center text-[13px] text-zinc-500">
         New to LegalVault?{" "}
-        <Link href={ROUTES.register} className="font-medium text-gray-950 underline-offset-2 hover:underline">
+        <Link href={ROUTES.register} className="font-medium text-white underline-offset-4 hover:underline">
           Create an account
         </Link>
       </p>
