@@ -24,5 +24,5 @@ Security:
 
 ## Team Members
 
-- Member 1
-- Member 2
+- Aayush Ajay Wanve,D12C,63
+- Ruturaj Amit Rajwade,D12c,46
