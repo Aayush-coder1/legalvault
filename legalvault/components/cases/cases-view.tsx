@@ -7,30 +7,21 @@ import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CaseCard } from "@/components/cases/case-card";
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog";
+import { createCase, usePreviewStore } from "@/components/cases/preview-store";
 import type { CaseFormValues } from "@/components/cases/case-form";
-import { mockEvidence } from "@/lib/mock-data";
-import type { CaseStatus, LegalCase } from "@/lib/types";
+import type { CaseStatus } from "@/lib/types";
 
 type StatusFilter = "all" | CaseStatus;
 
-/** Dashboard case list: search + status filter + create (local state for now). */
-export function CasesView({ initialCases }: { initialCases: LegalCase[] }) {
-  const [cases, setCases] = React.useState<LegalCase[]>(initialCases);
+/** Dashboard case list: search + status filter + create (preview store). */
+export function CasesView() {
+  const { cases, evidence } = usePreviewStore();
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("all");
 
   function handleCreate(values: CaseFormValues) {
-    const now = new Date().toISOString();
-    setCases((prev) => [
-      {
-        id: `case_preview_${Date.now()}`,
-        tenantId: "tenant_01",
-        ...values,
-        createdAt: now,
-        updatedAt: now,
-      },
-      ...prev,
-    ]);
+    // tenant_01 matches the seed data; TenantResolver derives this later.
+    createCase(values, "tenant_01");
   }
 
   const filtered = cases.filter((c) => {
@@ -99,7 +90,7 @@ export function CasesView({ initialCases }: { initialCases: LegalCase[] }) {
             <CaseCard
               key={c.id}
               legalCase={c}
-              evidenceCount={mockEvidence.filter((e) => e.caseId === c.id).length}
+              evidenceCount={evidence.filter((e) => e.caseId === c.id).length}
             />
           ))}
         </div>

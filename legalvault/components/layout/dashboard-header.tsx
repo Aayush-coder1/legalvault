@@ -6,6 +6,7 @@ import { Briefcase, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/auth/session";
+import { resetPreviewDb } from "@/components/cases/preview-store";
 import { ROUTES } from "@/lib/config/constants";
 
 export function DashboardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -16,6 +17,7 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
 
   function handleLogout() {
     signOut();
+    resetPreviewDb();
     router.push(ROUTES.login);
   }
 

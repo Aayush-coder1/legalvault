@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import * as React from "react";
 import { FileWarning } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
@@ -9,65 +9,67 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { DeleteCaseDialog } from "@/components/cases/delete-case-dialog";
 import type { CaseFormValues } from "@/components/cases/case-form";
+import {
+  addNote,
+  addUploads,
+  deleteCase,
+  deleteEvidence,
+  updateCase,
+  usePreviewStore,
+} from "@/components/cases/preview-store";
 import { EvidenceList } from "@/components/evidence/evidence-list";
 import { EvidenceUpload, type PendingUpload } from "@/components/evidence/evidence-upload";
 import { ROUTES } from "@/lib/config/constants";
 import { formatDateTime } from "@/lib/utils/format";
 import type { Evidence, LegalCase } from "@/lib/types";
 
-function mimeFor(kind: PendingUpload["kind"]): string {
-  if (kind === "pdf") return "application/pdf";
-  if (kind === "image") return "image/png";
-  return "video/mp4";
+/** Case detail: header + edit/delete + evidence section (preview store). */
+export function CaseDetailView({ caseId }: { caseId: string }) {
+  const { getCase, getEvidence } = usePreviewStore();
+  const legalCase = getCase(caseId);
+
+  if (!legalCase) {
+    return (
+      <EmptyState
+        icon={<FileWarning className="size-5" aria-hidden />}
+        title="Case not found"
+        description="It may have been deleted. Pick another matter from the dashboard."
+        action={
+          <Link href={ROUTES.dashboard} className="text-sm font-medium text-white underline-offset-4 hover:underline">
+            Back to cases
+          </Link>
+        }
+      />
+    );
+  }
+
+  return <CaseDetailContent legalCase={legalCase} evidence={getEvidence(caseId)} />;
 }
 
-/** Case detail: header + edit/delete + evidence section (local state for now). */
-export function CaseDetailView({ initialCase, initialEvidence }: { initialCase: LegalCase; initialEvidence: Evidence[] }) {
+function CaseDetailContent({
+  legalCase,
+  evidence,
+}: {
+  legalCase: LegalCase;
+  evidence: Evidence[];
+}) {
   const router = useRouter();
-  const [legalCase, setLegalCase] = React.useState<LegalCase>(initialCase);
-  const [evidence, setEvidence] = React.useState<Evidence[]>(initialEvidence);
 
   function handleSave(values: CaseFormValues) {
-    setLegalCase((c) => ({ ...c, ...values, updatedAt: new Date().toISOString() }));
+    updateCase(legalCase.id, values);
   }
 
   function handleDeleteCase() {
-    // UI foundation: return to the dashboard preview.
+    deleteCase(legalCase.id);
     router.push(ROUTES.dashboard);
   }
 
   function handleFilesPicked(files: PendingUpload[]) {
-    const now = new Date().toISOString();
-    setEvidence((prev) => [
-      ...files.map((f, i) => ({
-        id: `ev_preview_${Date.now()}_${i}`,
-        tenantId: legalCase.tenantId,
-        caseId: legalCase.id,
-        fileName: f.fileName,
-        mimeType: mimeFor(f.kind),
-        kind: f.kind,
-        sizeBytes: f.sizeBytes,
-        uploadDate: now,
-      })),
-      ...prev,
-    ]);
+    addUploads(legalCase.id, legalCase.tenantId, files);
   }
 
   function handleNoteAdded(text: string) {
-    const words = text.split(/\s+/).slice(0, 5).join(" ").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    setEvidence((prev) => [
-      {
-        id: `ev_preview_${Date.now()}`,
-        tenantId: legalCase.tenantId,
-        caseId: legalCase.id,
-        fileName: `${words || "note"}.txt`,
-        mimeType: "text/plain",
-        kind: "note",
-        sizeBytes: new Blob([text]).size,
-        uploadDate: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    addNote(legalCase.id, legalCase.tenantId, text);
   }
 
   return (
@@ -120,7 +122,7 @@ export function CaseDetailView({ initialCase, initialEvidence }: { initialCase: 
                 description="Upload a file or write a note to start building the record."
               />
             ) : (
-              <EvidenceList items={evidence} onDelete={(id) => setEvidence((prev) => prev.filter((e) => e.id !== id))} />
+              <EvidenceList items={evidence} onDelete={deleteEvidence} />
             )}
           </CardContent>
         </Card>

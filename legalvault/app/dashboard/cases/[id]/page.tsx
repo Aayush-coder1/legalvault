@@ -1,25 +1,30 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { CaseDetailView } from "@/components/cases/case-detail-view";
-import { getMockCase, getMockEvidence } from "@/lib/mock-data";
+import { usePreviewStore } from "@/components/cases/preview-store";
 import { ROUTES } from "@/lib/config/constants";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const legalCase = getMockCase(id);
-  return { title: legalCase ? legalCase.title : "Case not found" };
-}
-
-export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const legalCase = getMockCase(id);
-  if (!legalCase) notFound();
+/**
+ * Client page so it reads live preview-store state: cases created on the
+ * dashboard open here, and deleted cases correctly fall through to the
+ * "not found" view instead of stale mock data.
+ */
+export default function CaseDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const { getCase } = usePreviewStore();
+  const legalCase = getCase(id);
 
   return (
     <div className="flex min-h-full flex-col">
-      <DashboardHeader title={legalCase.title} subtitle={legalCase.caseNumber} />
+      <DashboardHeader
+        title={legalCase ? legalCase.title : "Case not found"}
+        subtitle={legalCase?.caseNumber}
+      />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
         <Link
           href={ROUTES.dashboard}
@@ -27,7 +32,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         >
           <ArrowLeft className="size-3.5" aria-hidden /> Back to cases
         </Link>
-        <CaseDetailView initialCase={legalCase} initialEvidence={getMockEvidence(legalCase.id)} />
+        <CaseDetailView caseId={id} />
       </main>
     </div>
   );
