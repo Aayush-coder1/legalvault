@@ -38,3 +38,18 @@ services:
     depends_on:
       - crypto-proxy
       - auth-service
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_AUTH_URL: http://localhost:4001
+        NEXT_PUBLIC_CASE_URL: http://localhost:4002
+        NEXT_PUBLIC_FILE_URL: http://localhost:4003
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - case-service
+      - file-service

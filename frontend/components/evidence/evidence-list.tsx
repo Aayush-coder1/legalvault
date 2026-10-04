@@ -22,7 +22,8 @@ export function EvidenceList({
   return (
     <ul className="divide-y divide-white/5">
       {items.map((item) => {
-        const Icon = KIND_ICON[item.kind];
+        // Fall back to a generic icon so one bad record can never crash the list.
+        const Icon = KIND_ICON[item.kind] ?? FileText;
         return (
           <li key={item.id} className="flex items-center gap-3 py-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300">

@@ -1,3 +1,7 @@
+const path = require("path");
+// Load repo-root .env first (npm --prefix runs us from the service dir),
+// then a local .env if present (fills only keys still missing).
+require("dotenv").config({ path: path.join(__dirname, "..", "..", "..", "..", ".env") });
 require("dotenv").config();
 
 function need(name) {
@@ -16,7 +20,12 @@ module.exports = {
   issuer: process.env.JWT_ISSUER || "legalvault-auth",
   audience: process.env.JWT_AUDIENCE || "legalvault-app",
   masterKey: Buffer.from(need("CRYPTO_MASTER_KEY"), "base64"), // 32 bytes
-  awsRegion: need("AWS_REGION"),
-  s3Bucket: need("S3_BUCKET"),
+  // Backblaze B2 (S3-compatible). Endpoint looks like:
+  // https://s3.us-west-004.backblazeb2.com  (see bucket's "S3 Endpoint" in B2 console)
+  b2Endpoint: need("B2_ENDPOINT"),
+  b2Region: process.env.B2_REGION || "us-east-1",
+  b2KeyId: need("B2_KEY_ID"),
+  b2AppKey: need("B2_APP_KEY"),
+  b2Bucket: need("B2_BUCKET"),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 };

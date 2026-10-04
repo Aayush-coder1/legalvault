@@ -1,3 +1,7 @@
+const path = require("path");
+// Load repo-root .env first (npm --prefix runs us from the service dir),
+// then a local .env if present (fills only keys still missing).
+require("dotenv").config({ path: path.join(__dirname, "..", "..", "..", "..", ".env") });
 require("dotenv").config();
 
 function need(name) {

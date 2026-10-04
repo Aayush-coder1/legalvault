@@ -50,13 +50,25 @@ async function updateCase(req, res, next) {
 async function deleteCase(req, res, next) {
   try {
     const { tenantId } = getTenant(req);
-    // delete case + its notes + its files metadata (S3 objects too)
+    // delete case + its notes
     await EncryptedDoc.deleteOne({ tenantId, itemId: req.params.caseId });
     await EncryptedDoc.deleteMany({ tenantId, caseId: req.params.caseId, kind: "note" });
+    // delete every file from the bucket first, then drop its metadata.
+    // A failed bucket delete keeps its metadata so a retry can clean it up.
     const files = await FileMeta.find({ tenantId, caseId: req.params.caseId });
-    for (const f of files) { try { await delLocked(f.s3Key); } catch {} }
-    await FileMeta.deleteMany({ tenantId, caseId: req.params.caseId });
-    res.json({ success: true, data: { ok: true } });
+    const failed = [];
+    for (const f of files) {
+      try {
+        await delLocked(f.s3Key);
+        await FileMeta.deleteOne({ _id: f._id });
+      } catch (err) {
+        failed.push({ fileId: f.fileId, fileName: f.fileName, error: err.message });
+      }
+    }
+    res.json({
+      success: failed.length === 0,
+      data: { ok: failed.length === 0, deletedFiles: files.length - failed.length, failedFiles: failed },
+    });
   } catch (e) { next(e); }
 }
 
@@ -101,6 +113,16 @@ async function deleteNote(req, res, next) {
 }
 
 // ---- Files (envelope-encrypted bytes in S3, metadata in Mongo) ----
+// Frontend EvidenceKind: pdf | image | video | note (derived from MIME).
+function kindOf(mimeType) {
+  if (!mimeType) return "pdf";
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType === "text/plain") return "note";
+  return "pdf"; // safe default the UI can always render
+}
+
 async function uploadFile(req, res, next) {
   try {
     const { caseId, fileName, mimeType, sizeBytes, dataBase64 } = req.body || {};
@@ -115,7 +137,7 @@ async function uploadFile(req, res, next) {
     await putLocked(key_, Buffer.from(bundle.ciphertext, "base64"));
     const { ciphertext, ...rest } = bundle; // ciphertext lives in S3 only
     await FileMeta.create({ fileId, tenantId, caseId, fileName, mimeType, sizeBytes, s3Key: key_, keyVersion: version, encBundle: rest });
-    res.status(201).json({ success: true, data: { id: fileId, tenantId, caseId, fileName, mimeType, sizeBytes, uploadDate: new Date().toISOString() } });
+    res.status(201).json({ success: true, data: { id: fileId, tenantId, caseId, fileName, mimeType, kind: kindOf(mimeType), sizeBytes, uploadDate: new Date().toISOString() } });
   } catch (e) { next(e); }
 }
 
@@ -125,7 +147,7 @@ async function listFiles(req, res, next) {
     const q = { tenantId };
     if (req.query.caseId) q.caseId = req.query.caseId;
     const rows = await FileMeta.find(q).sort({ createdAt: -1 });
-    res.json({ success: true, data: rows.map((f) => ({ id: f.fileId, tenantId: f.tenantId, caseId: f.caseId, fileName: f.fileName, mimeType: f.mimeType, sizeBytes: f.sizeBytes, uploadDate: f.createdAt })) });
+    res.json({ success: true, data: rows.map((f) => ({ id: f.fileId, tenantId: f.tenantId, caseId: f.caseId, fileName: f.fileName, mimeType: f.mimeType, kind: kindOf(f.mimeType), sizeBytes: f.sizeBytes, uploadDate: f.createdAt })) });
   } catch (e) { next(e); }
 }
 

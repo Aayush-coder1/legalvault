@@ -96,8 +96,15 @@ function CaseDetailContent({
   }
 
   async function handleDeleteCase() {
-    await apiDelete(legalCase.id);
-    router.push(ROUTES.dashboard);
+    try {
+      await apiDelete(legalCase.id);
+      router.push(ROUTES.dashboard);
+    } catch (err) {
+      // Case row is gone but some bucket files survived (see error detail).
+      // Metadata was kept for those, so deleting again retries them.
+      alert(err instanceof Error ? `Case deleted, but file cleanup failed: ${err.message}` : "Case deleted, but file cleanup failed.");
+      router.push(ROUTES.dashboard);
+    }
   }
 
   async function handleFilesPicked(files: File[]) {
