@@ -7,21 +7,56 @@ import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CaseCard } from "@/components/cases/case-card";
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog";
-import { createCase, usePreviewStore } from "@/components/cases/preview-store";
+import { listCases, createCase as apiCreateCase } from "@/lib/api/cases";
+import { listFiles } from "@/lib/api/files";
 import type { CaseFormValues } from "@/components/cases/case-form";
-import type { CaseStatus } from "@/lib/types";
+import type { CaseStatus, LegalCase } from "@/lib/types";
 
 type StatusFilter = "all" | CaseStatus;
 
-/** Dashboard case list: search + status filter + create (preview store). */
+/** Dashboard case list: live from case-service + file counts from file-service. */
 export function CasesView() {
-  const { cases, evidence } = usePreviewStore();
+  const [cases, setCases] = React.useState<LegalCase[]>([]);
+  const [counts, setCounts] = React.useState<Record<string, number>>({});
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("all");
 
-  function handleCreate(values: CaseFormValues) {
-    // tenant_01 matches the seed data; TenantResolver derives this later.
-    createCase(values, "tenant_01");
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const rows = await listCases();
+      setCases(rows);
+      // evidence counts per case (best-effort)
+      const entries = await Promise.all(
+        rows.map(async (c) => {
+          try {
+            const files = await listFiles(c.id);
+            return [c.id, files.length] as const;
+          } catch {
+            return [c.id, 0] as const;
+          }
+        })
+      );
+      setCounts(Object.fromEntries(entries));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load cases");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    // fetch-once on mount: legitimate data fetch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  async function handleCreate(values: CaseFormValues) {
+    const created = await apiCreateCase(values);
+    setCases((prev) => [created, ...prev]);
   }
 
   const filtered = cases.filter((c) => {
@@ -36,6 +71,17 @@ export function CasesView() {
 
   const openCount = cases.filter((c) => c.status === "open").length;
   const activeCount = cases.filter((c) => c.status === "in-progress").length;
+
+  if (loading) return <p className="text-sm text-zinc-500">Loading cases…</p>;
+  if (error) {
+    return (
+      <EmptyState
+        icon={<Briefcase className="size-5" aria-hidden />}
+        title="Cannot reach backend"
+        description={`${error}. Check services are running and .env.local is set.`}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -87,11 +133,7 @@ export function CasesView() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {filtered.map((c) => (
-            <CaseCard
-              key={c.id}
-              legalCase={c}
-              evidenceCount={evidence.filter((e) => e.caseId === c.id).length}
-            />
+            <CaseCard key={c.id} legalCase={c} evidenceCount={counts[c.id] ?? 0} />
           ))}
         </div>
       )}

@@ -5,26 +5,16 @@ import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { CaseDetailView } from "@/components/cases/case-detail-view";
-import { usePreviewStore } from "@/components/cases/preview-store";
 import { ROUTES } from "@/lib/config/constants";
 
-/**
- * Client page so it reads live preview-store state: cases created on the
- * dashboard open here, and deleted cases correctly fall through to the
- * "not found" view instead of stale mock data.
- */
+/** Server title is generic; detail view loads the live case itself. */
 export default function CaseDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { getCase } = usePreviewStore();
-  const legalCase = getCase(id);
 
   return (
     <div className="flex min-h-full flex-col">
-      <DashboardHeader
-        title={legalCase ? legalCase.title : "Case not found"}
-        subtitle={legalCase?.caseNumber}
-      />
+      <DashboardHeader title="Case detail" subtitle={id} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
         <Link
           href={ROUTES.dashboard}

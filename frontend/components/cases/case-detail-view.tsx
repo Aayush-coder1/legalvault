@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import * as React from "react";
 import { FileWarning } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
@@ -9,31 +10,62 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { EditCaseDialog } from "@/components/cases/edit-case-dialog";
 import { DeleteCaseDialog } from "@/components/cases/delete-case-dialog";
 import type { CaseFormValues } from "@/components/cases/case-form";
-import {
-  addNote,
-  addUploads,
-  deleteCase,
-  deleteEvidence,
-  updateCase,
-  usePreviewStore,
-} from "@/components/cases/preview-store";
 import { EvidenceList } from "@/components/evidence/evidence-list";
-import { EvidenceUpload, type PendingUpload } from "@/components/evidence/evidence-upload";
+import { EvidenceUpload } from "@/components/evidence/evidence-upload";
 import { ROUTES } from "@/lib/config/constants";
 import { formatDateTime } from "@/lib/utils/format";
 import type { Evidence, LegalCase } from "@/lib/types";
+import { getCase, updateCase as apiUpdate, deleteCase as apiDelete, listNotes, createNote as apiCreateNote } from "@/lib/api/cases";
+import { listFiles, uploadFile, uploadNote, deleteFile, downloadFile } from "@/lib/api/files";
 
-/** Case detail: header + edit/delete + evidence section (preview store). */
+/** Case detail: live from case-service (case+notes) and file-service (files). */
 export function CaseDetailView({ caseId }: { caseId: string }) {
-  const { getCase, getEvidence } = usePreviewStore();
-  const legalCase = getCase(caseId);
+  const [legalCase, setLegalCase] = React.useState<LegalCase | null>(null);
+  const [evidence, setEvidence] = React.useState<Evidence[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
 
-  if (!legalCase) {
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const c = await getCase(caseId);
+      setLegalCase(c);
+      const [files, notes] = await Promise.all([
+        listFiles(caseId).catch(() => [] as Evidence[]),
+        listNotes(caseId).catch(() => []),
+      ]);
+      const noteEvidence: Evidence[] = notes.map((n) => ({
+        id: n.id,
+        tenantId: n.tenantId,
+        caseId,
+        fileName: `${(n.title || "note").slice(0, 40)}.txt`,
+        mimeType: "text/plain",
+        kind: "note" as const,
+        sizeBytes: n.text.length,
+        uploadDate: n.createdAt,
+      }));
+      setEvidence([...files, ...noteEvidence]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load case");
+    } finally {
+      setLoading(false);
+    }
+  }, [caseId]);
+
+  React.useEffect(() => {
+    // fetch-once per caseId: legitimate data fetch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  if (loading) return <p className="text-sm text-zinc-500">Loading case…</p>;
+  if (error || !legalCase) {
     return (
       <EmptyState
         icon={<FileWarning className="size-5" aria-hidden />}
         title="Case not found"
-        description="It may have been deleted. Pick another matter from the dashboard."
+        description={error || "It may have been deleted. Pick another matter from the dashboard."}
         action={
           <Link href={ROUTES.dashboard} className="text-sm font-medium text-white underline-offset-4 hover:underline">
             Back to cases
@@ -43,33 +75,60 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     );
   }
 
-  return <CaseDetailContent legalCase={legalCase} evidence={getEvidence(caseId)} />;
+  return <CaseDetailContent legalCase={legalCase} evidence={evidence} reload={load} />;
 }
 
 function CaseDetailContent({
   legalCase,
   evidence,
+  reload,
 }: {
   legalCase: LegalCase;
   evidence: Evidence[];
+  reload: () => Promise<void>;
 }) {
   const router = useRouter();
+  const [busy, setBusy] = React.useState("");
 
-  function handleSave(values: CaseFormValues) {
-    updateCase(legalCase.id, values);
+  async function handleSave(values: CaseFormValues) {
+    await apiUpdate(legalCase.id, values);
+    await reload();
   }
 
-  function handleDeleteCase() {
-    deleteCase(legalCase.id);
+  async function handleDeleteCase() {
+    await apiDelete(legalCase.id);
     router.push(ROUTES.dashboard);
   }
 
-  function handleFilesPicked(files: PendingUpload[]) {
-    addUploads(legalCase.id, legalCase.tenantId, files);
+  async function handleFilesPicked(files: File[]) {
+    setBusy("Uploading…");
+    try {
+      for (const f of files) await uploadFile(legalCase.id, f);
+      await reload();
+    } finally {
+      setBusy("");
+    }
   }
 
-  function handleNoteAdded(text: string) {
-    addNote(legalCase.id, legalCase.tenantId, text);
+  async function handleNoteAdded(text: string) {
+    // notes go to case-service (encrypted in MongoDB via crypto-proxy)
+    await apiCreateNote(legalCase.id, text).catch(() => uploadNote(legalCase.id, text));
+    await reload();
+  }
+
+  async function handleDelete(id: string, kind: string) {
+    if (kind === "note") {
+      const { deleteNote } = await import("@/lib/api/cases");
+      await deleteNote(legalCase.id, id).catch(() => deleteFile(id));
+    } else {
+      await deleteFile(id);
+    }
+    await reload();
+  }
+
+  async function handleDownload(item: Evidence) {
+    if (item.kind === "note") return; // notes render inline; no bytes to download
+    await downloadFile(item.id, item.fileName);
   }
 
   return (
@@ -98,7 +157,7 @@ function CaseDetailContent({
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Add evidence</CardTitle>
-            <CardDescription>Files and notes are preview-only until upload APIs land.</CardDescription>
+            <CardDescription>{busy || "Files go to S3 (encrypted), notes to MongoDB (encrypted)."}</CardDescription>
           </CardHeader>
           <CardContent>
             <EvidenceUpload onFilesPicked={handleFilesPicked} onNoteAdded={handleNoteAdded} />
@@ -122,7 +181,10 @@ function CaseDetailContent({
                 description="Upload a file or write a note to start building the record."
               />
             ) : (
-              <EvidenceList items={evidence} onDelete={deleteEvidence} />
+              <EvidenceList items={evidence} onDelete={(id) => {
+                const item = evidence.find((e) => e.id === id);
+                if (item) handleDelete(id, item.kind);
+              }} onDownload={handleDownload} />
             )}
           </CardContent>
         </Card>

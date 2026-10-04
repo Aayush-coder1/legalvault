@@ -6,43 +6,43 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MAX_FILE_MB } from "@/lib/config/constants";
 import { cn } from "@/lib/utils/cn";
-import type { EvidenceKind } from "@/lib/types";
-
-export interface PendingUpload {
-  kind: Exclude<EvidenceKind, "note">;
-  fileName: string;
-  sizeBytes: number;
-}
 
 type Tab = "file" | "note";
 
-/**
- * UI-only upload panel. Parent owns the evidence list; this reports
- * picked files / composed notes via callbacks (API wiring comes later).
- */
+/** Real upload panel: passes File objects up (parent POSTs to file-service). */
 export function EvidenceUpload({
   onFilesPicked,
   onNoteAdded,
 }: {
-  onFilesPicked: (files: PendingUpload[]) => void;
-  onNoteAdded: (text: string) => void;
+  onFilesPicked: (files: File[]) => Promise<void> | void;
+  onNoteAdded: (text: string) => Promise<void> | void;
 }) {
   const [tab, setTab] = React.useState<Tab>("file");
   const [note, setNote] = React.useState("");
   const [dragOver, setDragOver] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  function kindFor(mime: string): PendingUpload["kind"] {
-    if (mime === "application/pdf") return "pdf";
-    if (mime.startsWith("image/")) return "image";
-    return "video";
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || busy) return;
+    setBusy(true);
+    try {
+      await onFilesPicked(Array.from(fileList));
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   }
 
-  function handleFiles(fileList: FileList | null) {
-    if (!fileList) return;
-    onFilesPicked(
-      Array.from(fileList).map((f) => ({ kind: kindFor(f.type), fileName: f.name, sizeBytes: f.size })),
-    );
+  async function handleNote() {
+    if (!note.trim() || busy) return;
+    setBusy(true);
+    try {
+      await onNoteAdded(note.trim());
+      setNote("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -100,7 +100,7 @@ export function EvidenceUpload({
           <span className="flex size-10 items-center justify-center rounded-lg bg-white/5 text-zinc-300">
             <Upload className="size-5" aria-hidden />
           </span>
-          <p className="mt-3 text-sm font-medium text-white">Drop files here or click to browse</p>
+          <p className="mt-3 text-sm font-medium text-white">{busy ? "Uploading…" : "Drop files here or click to browse"}</p>
           <p className="mt-1 text-[13px] text-zinc-500">PDF, images, video · max {MAX_FILE_MB} MB per file</p>
           <input
             ref={inputRef}
@@ -121,15 +121,8 @@ export function EvidenceUpload({
             aria-label="Note text"
           />
           <div className="flex justify-end">
-            <Button
-              size="sm"
-              disabled={note.trim().length === 0}
-              onClick={() => {
-                onNoteAdded(note.trim());
-                setNote("");
-              }}
-            >
-              Add note
+            <Button size="sm" disabled={note.trim().length === 0 || busy} onClick={handleNote}>
+              {busy ? "Saving…" : "Add note"}
             </Button>
           </div>
         </div>

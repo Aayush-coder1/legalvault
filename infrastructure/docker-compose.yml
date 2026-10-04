@@ -1,0 +1,40 @@
+services:
+  auth-service:
+    build: ../services/auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    env_file:
+      - ../.env
+
+  crypto-proxy:
+    build: ../services/crypto-proxy
+    restart: unless-stopped
+    ports:
+      - "4004:4004"
+    env_file:
+      - ../.env
+    depends_on:
+      - auth-service
+
+  case-service:
+    build: ../services/case-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    env_file:
+      - ../.env
+    depends_on:
+      - crypto-proxy
+      - auth-service
+
+  file-service:
+    build: ../services/file-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    env_file:
+      - ../.env
+    depends_on:
+      - crypto-proxy
+      - auth-service

@@ -1,126 +1,64 @@
 "use client";
 
 import * as React from "react";
+import { me as fetchMe, logout as apiLogout } from "@/lib/api/auth";
 
 /**
- * Preview session for the UI foundation.
- *
- * Holds "who is signed in" on the client so the header, sidebar and
- * dashboard reflect the name/email typed at login/register instead of a
- * hardcoded demo user. Persisted to localStorage; falls back to a demo
- * identity when nothing was entered (e.g. deep-linking /dashboard).
- *
- * State lives in a tiny external store read via useSyncExternalStore
- * (SSR-safe: server snapshot is always "no session").
- *
- * Replaced by JWT httpOnly-cookie auth later — at that point this module
- * becomes a thin reader of GET /api/auth/me, and all consumers stay the same.
+ * Real session: reads GET /auth/me (HttpOnly cookie).
+ * No localStorage, no demo user. Unauthenticated -> null user.
  */
 
 export interface SessionUser {
+  id: string;
   name: string;
   email: string;
-}
-
-export const DEMO_USER: SessionUser = {
-  name: "Aarav Sharma",
-  email: "aarav.sharma@chambers.in",
-};
-
-const STORAGE_KEY = "legalvault.preview-user";
-
-type Listener = () => void;
-
-const listeners = new Set<Listener>();
-let current: SessionUser | null = null;
-let initialized = false;
-
-function readStored(): SessionUser | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<SessionUser>;
-    if (typeof parsed.name === "string" && typeof parsed.email === "string") {
-      return { name: parsed.name, email: parsed.email };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function ensureInit(): void {
-  if (!initialized && typeof window !== "undefined") {
-    initialized = true;
-    current = readStored();
-  }
-}
-
-function emit(): void {
-  listeners.forEach((l) => l());
-}
-
-function subscribe(cb: Listener): () => void {
-  listeners.add(cb);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      current = readStored();
-      cb();
-    }
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(cb);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function getSnapshot(): SessionUser | null {
-  ensureInit();
-  return current;
-}
-
-function getServerSnapshot(): SessionUser | null {
-  return null;
-}
-
-function persist(next: SessionUser | null): void {
-  current = next;
-  try {
-    if (next) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    else window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Preview only — storage failure shouldn't block navigation.
-  }
-  emit();
+  tenantId: string;
 }
 
 interface SessionValue {
-  user: SessionUser;
-  /** True while showing the fallback demo identity. */
-  isDemo: boolean;
-  /** Workspace label derived from the signed-in email domain. */
+  user: SessionUser | null;
+  loading: boolean;
   workspace: string;
-  signIn: (user: SessionUser) => void;
-  signOut: () => void;
+  refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const SessionContext = React.createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const stored = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const user = stored ?? DEMO_USER;
+  const [user, setUser] = React.useState<SessionUser | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchMe().catch(() => null);
+      setUser(data?.user ?? null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    // fetch-once on mount: legitimate data fetch, not cascading render
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refresh();
+  }, [refresh]);
 
   const value = React.useMemo<SessionValue>(() => {
-    const domain = user.email.split("@")[1];
+    const email = user?.email ?? "";
+    const domain = email.split("@")[1];
     return {
       user,
-      isDemo: stored === null,
+      loading,
       workspace: domain ? domain.split(".")[0] : "workspace",
-      signIn: (next) => persist(next),
-      signOut: () => persist(null),
+      refresh,
+      signOut: async () => {
+        await apiLogout().catch(() => null);
+        setUser(null);
+      },
     };
-  }, [user, stored]);
+  }, [user, loading, refresh]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

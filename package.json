@@ -1,0 +1,14 @@
+{
+  "name": "legalvault",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LegalVault - safe place for lawyers to store cases, notes and files",
+  "scripts": {
+    "gen:keys": "node scripts/generate-jwt-keys.js",
+    "dev:auth": "npm --prefix services/auth-service run dev",
+    "dev:crypto": "npm --prefix services/crypto-proxy run dev",
+    "dev:case": "npm --prefix services/case-service run dev",
+    "dev:file": "npm --prefix services/file-service run dev",
+    "dev:frontend": "npm --prefix frontend run dev"
+  }
+}

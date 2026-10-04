@@ -13,9 +13,11 @@ const KIND_ICON: Record<EvidenceKind, typeof FileText> = {
 export function EvidenceList({
   items,
   onDelete,
+  onDownload,
 }: {
   items: Evidence[];
   onDelete: (id: string) => void;
+  onDownload?: (item: Evidence) => void;
 }) {
   return (
     <ul className="divide-y divide-white/5">
@@ -33,9 +35,11 @@ export function EvidenceList({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <Button variant="ghost" size="icon" aria-label={`Download ${item.fileName}`}>
-                <Download aria-hidden />
-              </Button>
+              {item.kind !== "note" ? (
+                <Button variant="ghost" size="icon" aria-label={`Download ${item.fileName}`} onClick={() => onDownload?.(item)}>
+                  <Download aria-hidden />
+                </Button>
+              ) : null}
               <Button variant="ghost" size="icon" aria-label={`Delete ${item.fileName}`} onClick={() => onDelete(item.id)}>
                 <Trash2 aria-hidden />
               </Button>

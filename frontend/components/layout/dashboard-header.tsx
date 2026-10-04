@@ -6,7 +6,6 @@ import { Briefcase, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/auth/session";
-import { resetPreviewDb } from "@/components/cases/preview-store";
 import { ROUTES } from "@/lib/config/constants";
 
 export function DashboardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -15,9 +14,8 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
   const router = useRouter();
   const { user, workspace, signOut } = useSession();
 
-  function handleLogout() {
-    signOut();
-    resetPreviewDb();
+  async function handleLogout() {
+    await signOut();
     router.push(ROUTES.login);
   }
 
@@ -42,11 +40,11 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
         <div className="flex items-center gap-3">
           <div className="hidden items-center gap-2.5 sm:flex">
             <span className="flex size-8 items-center justify-center rounded-full bg-[#e3b341] text-xs font-semibold text-zinc-950" aria-hidden>
-              {user.name.charAt(0).toUpperCase()}
+              {(user?.name || "L").charAt(0).toUpperCase()}
             </span>
             <div className="leading-tight">
-              <p className="max-w-40 truncate text-[13px] font-medium text-white">{user.name}</p>
-              <p className="max-w-40 truncate text-xs text-zinc-500">{user.email}</p>
+              <p className="max-w-40 truncate text-[13px] font-medium text-white">{user?.name ?? "…"}</p>
+              <p className="max-w-40 truncate text-xs text-zinc-500">{user?.email ?? ""}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout} aria-label="Log out">
@@ -72,7 +70,7 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
             </Link>
           ))}
           <p className="px-3 py-2 font-mono text-xs text-zinc-600">
-            {user.email} · {workspace}
+            {user?.email} · {workspace}
           </p>
         </nav>
       ) : null}

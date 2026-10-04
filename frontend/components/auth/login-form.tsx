@@ -6,24 +6,34 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/label";
-import { nameFromEmail, useSession } from "@/components/auth/session";
+import { login } from "@/lib/api/auth";
+import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
-/** UI-only sign-in form. Wires to POST /api/auth/login once auth lands. */
+/** Real sign-in: POST auth-service /auth/login, cookie session. */
 export function LoginForm() {
   const router = useRouter();
-  const { signIn } = useSession();
+  const { refresh } = useSession();
   const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState("");
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const email = String(data.get("email") ?? "").trim();
-    if (!email) return;
+    const password = String(data.get("password") ?? "");
+    if (!email || !password) return;
     setPending(true);
-    // Preview session: remember who signed in so the header reflects them.
-    signIn({ name: nameFromEmail(email), email });
-    router.push(ROUTES.dashboard);
+    setError("");
+    try {
+      await login(email, password);
+      await refresh();
+      router.push(ROUTES.dashboard);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -34,6 +44,7 @@ export function LoginForm() {
       <Field label="Password" htmlFor="password">
         <Input id="password" name="password" type="password" autoComplete="current-password" placeholder="••••••••" required />
       </Field>
+      {error ? <p className="text-[13px] text-red-400">{error}</p> : null}
       <Button type="submit" className="w-full" size="lg" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
