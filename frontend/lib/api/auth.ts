@@ -1,4 +1,4 @@
-import { AUTH_URL, api, apiJson } from "@/lib/api/client";
+import { AUTH_URL, api, apiJson, silentRefresh } from "@/lib/api/client";
 
 export interface AuthUser {
   id: string;
@@ -21,4 +21,8 @@ export function logout() {
 
 export function me() {
   return api<{ user: AuthUser }>(`${AUTH_URL}/auth/me`);
+}
+
+export function refreshSession() {
+  return silentRefresh();
 }

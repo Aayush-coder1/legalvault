@@ -1,9 +1,23 @@
 const auth = require("../services/auth.service");
 const { verifyAccessToken } = require("../services/token.service");
+const config = require("../config");
 
 function setCookies(res, session) {
-  res.cookie("accessToken", session.accessToken, auth.cookieOpts(15 * 60 * 1000));
-  res.cookie("refreshToken", session.refreshToken, auth.cookieOpts(7 * 24 * 60 * 60 * 1000));
+  res.cookie("accessToken", session.accessToken, auth.cookieOpts(config.accessTtlMs));
+  res.cookie("refreshToken", session.refreshToken, auth.cookieOpts(config.refreshTtlDays * 24 * 60 * 60 * 1000));
+}
+
+function clearCookies(res) {
+  const base = auth.cookieOpts(0);
+  res.clearCookie("accessToken", { path: "/", httpOnly: base.httpOnly, secure: base.secure, sameSite: base.sameSite });
+  res.clearCookie("refreshToken", { path: "/", httpOnly: base.httpOnly, secure: base.secure, sameSite: base.sameSite });
+}
+
+function extractToken(req) {
+  if (req.cookies && req.cookies.accessToken) return req.cookies.accessToken;
+  const h = req.headers.authorization || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : "";
 }
 
 async function signup(req, res, next) {
@@ -34,16 +48,15 @@ async function refresh(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    await auth.logout(req.cookies.refreshToken);
-    res.clearCookie("accessToken", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
+    await auth.logout(req.cookies && req.cookies.refreshToken);
+    clearCookies(res);
     res.json({ success: true, data: { ok: true } });
   } catch (e) { next(e); }
 }
 
 async function me(req, res) {
   try {
-    const token = req.cookies.accessToken || (req.headers.authorization || "").replace("Bearer ", "");
+    const token = extractToken(req);
     if (!token) return res.status(401).json({ success: false, error: { code: "NO_TOKEN", message: "Not logged in" } });
     const p = verifyAccessToken(token);
     const User = require("../models/User");

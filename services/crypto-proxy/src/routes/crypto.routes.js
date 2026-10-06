@@ -23,6 +23,7 @@ router.delete("/notes/:noteId", c.deleteNote);
 // files (locked bytes in S3)
 router.post("/files/upload", express.json({ limit: "60mb" }), c.uploadFile);
 router.get("/files", c.listFiles);
+router.get("/files/counts", c.fileCounts);
 router.get("/files/:fileId/download", c.downloadFile);
 router.delete("/files/:fileId", c.deleteFile);
 

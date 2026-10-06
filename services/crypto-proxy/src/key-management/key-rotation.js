@@ -1,28 +1,26 @@
 const crypto = require("crypto");
 const TenantKey = require("./TenantKey");
-const { getKey } = require("./key-manager");
+const { getKey, wrap, packWrapped, invalidateTenant } = require("./key-manager");
 
 // Rotation: new writes use v+1, old data still opens with old version.
 async function rotateKey(tenantId) {
   const latest = await getKey(tenantId);
   const raw = crypto.randomBytes(32);
-  // reuse wrap from key-manager by re-creating via create (simple: store raw wrapped same way)
-  const keyManager = require("./key-manager");
   // mark old as old
   await TenantKey.updateMany({ tenantId }, { status: "old" });
-  const wrap = packOf(raw);
-  const row = await TenantKey.create({ tenantId, version: latest.version + 1, keyB64: wrap, status: "active" });
-  return { version: row.version };
-}
-
-function packOf(raw) {
-  // keep in same wrapped format as key-manager (duplicate tiny logic to stay simple)
-  const config = require("../config");
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv("aes-256-gcm", config.masterKey, iv);
-  const enc = Buffer.concat([c.update(raw), c.final()]);
-  const w = { enc: enc.toString("base64"), iv: iv.toString("base64"), tag: c.getAuthTag().toString("base64") };
-  return Buffer.from(JSON.stringify(w)).toString("base64");
+  try {
+    const row = await TenantKey.create({ tenantId, version: latest.version + 1, keyB64: packWrapped(wrap(raw)), status: "active" });
+    invalidateTenant(tenantId);
+    return { version: row.version };
+  } catch (e) {
+    if (e && e.code === 11000) {
+      // Concurrent rotation won — return the winner instead of 500.
+      const winner = await getKey(tenantId);
+      invalidateTenant(tenantId);
+      return { version: winner.version };
+    }
+    throw e;
+  }
 }
 
 module.exports = { rotateKey };

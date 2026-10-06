@@ -13,13 +13,29 @@ function need(name) {
   return v;
 }
 
+function masterKey() {
+  const raw = need("CRYPTO_MASTER_KEY").trim();
+  let buf;
+  try {
+    buf = Buffer.from(raw, "base64");
+  } catch {
+    console.error("CRYPTO_MASTER_KEY must be base64 (32 bytes)");
+    process.exit(1);
+  }
+  if (buf.length !== 32) {
+    console.error(`CRYPTO_MASTER_KEY must decode to 32 bytes (got ${buf.length})`);
+    process.exit(1);
+  }
+  return buf;
+}
+
 module.exports = {
   port: Number(process.env.CRYPTO_PORT || 4004),
   mongoUri: need("MONGO_URI"),
   jwksUrl: process.env.JWKS_URL || "http://localhost:4001/auth/jwks.json",
   issuer: process.env.JWT_ISSUER || "legalvault-auth",
   audience: process.env.JWT_AUDIENCE || "legalvault-app",
-  masterKey: Buffer.from(need("CRYPTO_MASTER_KEY"), "base64"), // 32 bytes
+  masterKey: masterKey(), // 32 bytes, validated
   // Backblaze B2 (S3-compatible). Endpoint looks like:
   // https://s3.us-west-004.backblazeb2.com  (see bucket's "S3 Endpoint" in B2 console)
   b2Endpoint: need("B2_ENDPOINT"),

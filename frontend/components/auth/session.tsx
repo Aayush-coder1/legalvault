@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { me as fetchMe, logout as apiLogout } from "@/lib/api/auth";
+import { me as fetchMe, logout as apiLogout, refreshSession } from "@/lib/api/auth";
 
 /**
  * Real session: reads GET /auth/me (HttpOnly cookie).
@@ -32,7 +32,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchMe().catch(() => null);
+      const data = await fetchMe().catch(async () => {
+        // One silent-refresh attempt before giving up (covers 15m expiry).
+        const ok = await refreshSession();
+        if (!ok) return null;
+        return fetchMe().catch(() => null);
+      });
       setUser(data?.user ?? null);
     } finally {
       setLoading(false);
@@ -44,6 +49,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
+
+  // Silent pre-refresh every 13m + on tab focus so idle sessions don't 401.
+  React.useEffect(() => {
+    const id = setInterval(async () => {
+      if (document.hidden) return;
+      await refreshSession().catch(() => null);
+    }, 13 * 60 * 1000);
+    const onVis = () => {
+      if (!document.hidden) refreshSession().catch(() => null);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const value = React.useMemo<SessionValue>(() => {
     const email = user?.email ?? "";

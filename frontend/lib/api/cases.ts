@@ -12,8 +12,12 @@ export interface Note {
   updatedAt: string;
 }
 
-export function listCases() {
-  return api<LegalCase[]>(`${CASE_URL}/cases`);
+export function listCases(opts?: { limit?: number; cursor?: string }) {
+  const q = new URLSearchParams();
+  if (opts?.limit) q.set("limit", String(opts.limit));
+  if (opts?.cursor) q.set("cursor", opts.cursor);
+  const s = q.toString();
+  return api<LegalCase[]>(`${CASE_URL}/cases${s ? `?${s}` : ""}`);
 }
 
 export function getCase(id: string) {

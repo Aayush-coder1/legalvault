@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CaseCard } from "@/components/cases/case-card";
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog";
 import { listCases, createCase as apiCreateCase } from "@/lib/api/cases";
-import { listFiles } from "@/lib/api/files";
+import { fileCounts } from "@/lib/api/files";
 import type { CaseFormValues } from "@/components/cases/case-form";
 import type { CaseStatus, LegalCase } from "@/lib/types";
 
@@ -29,18 +29,13 @@ export function CasesView() {
     try {
       const rows = await listCases();
       setCases(rows);
-      // evidence counts per case (best-effort)
-      const entries = await Promise.all(
-        rows.map(async (c) => {
-          try {
-            const files = await listFiles(c.id);
-            return [c.id, files.length] as const;
-          } catch {
-            return [c.id, 0] as const;
-          }
-        })
-      );
-      setCounts(Object.fromEntries(entries));
+      // evidence counts per case — single batch call, not N+1.
+      try {
+        const counts = await fileCounts(rows.map((c) => c.id));
+        setCounts(counts);
+      } catch {
+        setCounts({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load cases");
     } finally {

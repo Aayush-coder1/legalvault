@@ -35,12 +35,13 @@ cd legalvault
 cp .env.example .env
 cp frontend/.env.example frontend/.env.local
 
-# 2. install everything
-npm --prefix services/auth-service install
-npm --prefix services/crypto-proxy install
-npm --prefix services/case-service install
-npm --prefix services/file-service install
-npm --prefix frontend install
+# 2. install everything (cd into each folder, then npm i)
+cd services/auth-service && npm i && cd ../..
+cd services/crypto-proxy && npm i && cd ../..
+cd services/case-service && npm i && cd ../..
+cd services/file-service && npm i && cd ../..
+# at last, the frontend
+cd frontend && npm i && cd ..
 ```
 
 Fill in root `.env`:
@@ -74,15 +75,15 @@ NEXT_PUBLIC_FILE_URL=http://localhost:4003
 
 ```bash
 # terminal 1
-npm --prefix services/auth-service run dev
+cd services/auth-service && npm run dev
 # terminal 2
-npm --prefix services/crypto-proxy run dev
+cd services/crypto-proxy && npm run dev
 # terminal 3
-npm --prefix services/case-service run dev
+cd services/case-service && npm run dev
 # terminal 4
-npm --prefix services/file-service run dev
-# terminal 5
-npm --prefix frontend run dev
+cd services/file-service && npm run dev
+# terminal 5 (at last, the frontend)
+cd frontend && npm run dev
 ```
 
 Open `http://localhost:3000` → sign up → dashboard. Auth first because the other

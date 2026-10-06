@@ -11,6 +11,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "legalvault": "file:..",
     "lucide-react": "^1.47.0",
     "next": "16.3.8",
     "react": "19.2.8",

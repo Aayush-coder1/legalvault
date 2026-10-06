@@ -23,6 +23,18 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = DEFAULT_TIMEOUT_MS): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: init.signal ?? ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function parse<T>(res: Response): Promise<T> {
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.success) {
@@ -35,15 +47,44 @@ async function parse<T>(res: Response): Promise<T> {
   return json.data as T;
 }
 
-export async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
+// Single-flight silent refresh: at most one POST /auth/refresh in flight.
+let refreshInflight: Promise<unknown> | null = null;
+async function silentRefresh(): Promise<boolean> {
+  if (refreshInflight) {
+    try { await refreshInflight; return true; } catch { return false; }
+  }
+  refreshInflight = fetchWithTimeout(`${AUTH_URL}/auth/refresh`, { method: "POST", credentials: "include" }, 10000)
+    .then(async (r) => { if (!r.ok) throw new Error(`refresh ${r.status}`); return r.json().catch(() => null); })
+    .finally(() => { refreshInflight = null; });
+  try { await refreshInflight; return true; } catch { return false; }
+}
+
+export async function api<T>(url: string, init?: RequestInit, retryOn401 = true): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, { credentials: "include", ...init });
+  } catch (e) {
+    throw new ApiError("NETWORK_FAIL", e instanceof Error && e.name === "AbortError" ? "Request timed out, try again" : "Cannot reach backend", 0);
+  }
+  if (res.status === 401 && retryOn401 && !url.includes("/auth/")) {
+    const ok = await silentRefresh();
+    if (ok) {
+      try {
+        res = await fetchWithTimeout(url, { credentials: "include", ...init });
+      } catch {
+        throw new ApiError("NETWORK_FAIL", "Cannot reach backend", 0);
+      }
+    }
+  }
   return parse<T>(res);
 }
 
 export function apiJson<T>(url: string, method: string, body?: unknown): Promise<T> {
   return api<T>(url, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-request-id": crypto.randomUUID() },
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+
+export { silentRefresh };

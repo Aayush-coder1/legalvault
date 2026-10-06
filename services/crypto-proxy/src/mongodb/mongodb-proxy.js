@@ -29,19 +29,39 @@ async function readItem(req, itemId) {
   return { ...plain, id: doc.itemId, tenantId: doc.tenantId, keyVersion: doc.keyVersion };
 }
 
-async function listByKind(tenantId, kind, caseId) {
+async function listByKind(tenantId, kind, caseId, opts = {}) {
+  const limit = Math.min(Math.max(Number(opts.limit) || 50, 1), 100);
   const q = { tenantId, kind };
   if (caseId) q.caseId = caseId;
-  const docs = await EncryptedDoc.find(q).sort({ updatedAt: -1 });
+  if (opts.cursor) {
+    const d = new Date(opts.cursor);
+    if (!Number.isNaN(d.getTime())) q.updatedAt = { $lt: d };
+  }
+  if (opts.search && kind === "case") {
+    // Encrypted bodies can't be searched server-side; search by recency window.
+    // Client filters decrypted titles; limit keeps the decrypt-all loop bounded.
+  }
+  const docs = await EncryptedDoc.find(q, { encryptedData: 1, itemId: 1, tenantId: 1, keyVersion: 1, updatedAt: 1, caseId: 1 })
+    .sort({ updatedAt: -1 })
+    .limit(limit + 1)
+    .lean();
   const { getKeyByVersion: byVer } = require("../key-management/key-manager");
   const keyCache = {};
   const out = [];
-  for (const doc of docs) {
+  const page = docs.slice(0, limit);
+  for (const doc of page) {
+    let bundle = doc.encryptedData;
+    if (!bundle || !bundle.ciphertext || !bundle.iv || !bundle.tag) {
+      const e = new Error("Corrupt record");
+      e.status = 422;
+      throw e;
+    }
     if (!keyCache[doc.keyVersion]) keyCache[doc.keyVersion] = await byVer(tenantId, doc.keyVersion);
     const plain = decrypt(keyCache[doc.keyVersion], doc.encryptedData);
     out.push({ ...plain, id: doc.itemId, tenantId: doc.tenantId, keyVersion: doc.keyVersion });
   }
-  return out;
+  const nextCursor = docs.length > limit ? page[page.length - 1].updatedAt.toISOString() : null;
+  return { items: out, nextCursor };
 }
 
 function newId() {

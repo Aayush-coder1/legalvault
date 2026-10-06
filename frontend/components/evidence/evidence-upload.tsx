@@ -4,7 +4,7 @@ import * as React from "react";
 import { FileUp, StickyNote, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MAX_FILE_MB } from "@/lib/config/constants";
+import { MAX_FILE_MB, ALLOWED_MIME_TYPES } from "@/lib/config/constants";
 import { cn } from "@/lib/utils/cn";
 
 type Tab = "file" | "note";
@@ -21,13 +21,26 @@ export function EvidenceUpload({
   const [note, setNote] = React.useState("");
   const [dragOver, setDragOver] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [fileError, setFileError] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const ALLOWED = React.useMemo(() => new Set(Object.values(ALLOWED_MIME_TYPES).flat()), []);
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList || busy) return;
+    const picked = Array.from(fileList);
+    const bad = picked.find((f) => f.size === 0 || f.size > MAX_FILE_MB * 1024 * 1024 || !ALLOWED.has(f.type));
+    if (bad) {
+      setFileError(
+        bad.size > MAX_FILE_MB * 1024 * 1024 ? `“${bad.name}” exceeds ${MAX_FILE_MB}MB` : `“${bad.name}” type not allowed`
+      );
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    setFileError("");
     setBusy(true);
     try {
-      await onFilesPicked(Array.from(fileList));
+      await onFilesPicked(picked);
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -102,6 +115,7 @@ export function EvidenceUpload({
           </span>
           <p className="mt-3 text-sm font-medium text-white">{busy ? "Uploading…" : "Drop files here or click to browse"}</p>
           <p className="mt-1 text-[13px] text-zinc-500">PDF, images, video · max {MAX_FILE_MB} MB per file</p>
+          {fileError ? <p className="mt-1 text-[13px] text-red-400">{fileError}</p> : null}
           <input
             ref={inputRef}
             type="file"
