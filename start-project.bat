@@ -58,18 +58,30 @@ if not exist "frontend\.env.local" (
 )
 echo.
 
-REM ---- 3. MongoDB reachable on localhost:27017? ----
-echo  Checking MongoDB on 127.0.0.1:27017 ...
+REM ---- 3. Mongo: Atlas cloud URL or local server? ----
+REM Reads .env directly (no variable expansion, so special chars in passwords are safe).
+findstr /i /c:"MONGO_URI=mongodb+srv" ".env" >nul 2>nul
+if not errorlevel 1 goto :mongoatlas
+findstr /i /c:"mongodb.net" ".env" >nul 2>nul
+if not errorlevel 1 goto :mongoatlas
+echo  Checking local MongoDB on 127.0.0.1:27017 ...
 powershell -NoProfile -NonInteractive -Command "$c=New-Object Net.Sockets.TcpClient; try { if ($c.ConnectAsync('127.0.0.1',27017).Wait(2000)) { exit 0 } else { exit 1 } } catch { exit 1 } finally { $c.Close() }" >nul 2>nul
 if errorlevel 1 (
-  echo  [WARN] MongoDB is NOT reachable. Start MongoDB / Compass on mongodb://localhost:27017 first.
+  echo  [WARN] Local MongoDB is NOT reachable. Start MongoDB / Compass first,
+  echo         or put your Atlas mongodb+srv:// URL in .env as MONGO_URI.
   echo         Services will still open, but auth and crypto-proxy will exit until Mongo is up.
   echo.
   pause
 ) else (
-  echo  [OK] MongoDB is up
+  echo  [OK] Local MongoDB is up
   echo.
 )
+goto :mongodone
+:mongoatlas
+echo  [OK] Atlas MONGO_URI detected - cloud DB, no local Mongo needed
+echo       (Make sure your IP is allowed in Atlas Network Access.)
+echo.
+:mongodone
 
 REM ---- 4. install deps where node_modules is missing ----
 echo  Installing dependencies (skipped where already installed)...

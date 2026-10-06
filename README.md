@@ -23,8 +23,14 @@ Flow: `Next.js → auth/case/file → crypto-proxy → MongoDB / B2` (only locke
 ## Needs (no Docker)
 
 - Node.js 22
-- MongoDB running locally (Compass connected to `mongodb://localhost:27017`)
+- A MongoDB Atlas cluster (free M0 is fine) + its connection string
 - A Backblaze B2 bucket (private) + application key limited to that bucket
+
+Atlas setup (one time, in cloud.mongodb.com):
+1. Create a cluster, then **Database Access** → add a user + password.
+2. **Network Access** → allow your IP (or `0.0.0.0/0` for dev only).
+3. **Connect → Drivers → Node.js** → copy the `mongodb+srv://...` string,
+   replace `<password>`, and append the db name: `...mongodb.net/legalvault`.
 
 ## Setup (one time)
 
@@ -47,7 +53,7 @@ cd frontend && npm i && cd ..
 Fill in root `.env`:
 
 ```env
-MONGO_URI=mongodb://localhost:27017/legalvault
+MONGO_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/legalvault
 JWKS_URL=http://localhost:4001/auth/jwks.json
 CRYPTO_PROXY_URL=http://localhost:4004
 
@@ -105,9 +111,12 @@ Deleting a case also deletes its notes, its file metadata, and its objects in B2
 
 - `.env` loads at boot: after editing it, restart that service (Ctrl+C, run again).
   Code changes hot-reload by themselves (`node --watch` / Turbopack).
-- Local terminals need `localhost` URLs (`JWKS_URL`, `CRYPTO_PROXY_URL`, `MONGO_URI`).
-  Service names (`auth-service`, `host.docker.internal`) only work inside Docker —
+- Local terminals need `localhost` service URLs (`JWKS_URL`, `CRYPTO_PROXY_URL`).
+  `MONGO_URI` is your Atlas cloud URL (not localhost). Service names
+  (`auth-service`, `host.docker.internal`) only work inside Docker —
   mixing them gives `Invalid or expired token` on every case/file request.
+- If auth/crypto-proxy exit at boot with a Mongo error on an Atlas URL:
+  check Network Access IP allowlist + DB user password in Atlas.
 - Access tokens live 15 minutes and the frontend has no silent refresh:
   if calls start failing after idle time, log out and back in.
 - Never commit `.env` or `*.pem`. Keys in `.env.example` are dev-only examples.

@@ -61,7 +61,25 @@ app.use((err, req, res, next) => {
   res.status(status).json({ success: false, error: { code, message } });
 });
 
-mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000, socketTimeoutMS: 20000, maxPoolSize: 20 }).then(() => {
+function mongoOpts() {
+  const opts = {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 30000,
+    maxPoolSize: 20,
+    retryWrites: true,
+    appName: "legalvault-crypto",
+  };
+  // Atlas non-SRV host (mongodb://...mongodb.net) needs explicit TLS;
+  // mongodb+srv:// enables it automatically.
+  if (/^mongodb:\/\/[^/]*mongodb\.net/i.test(config.mongoUri || "")) opts.tls = true;
+  return opts;
+}
+
+mongoose.connection.on("error", (e) => console.error("crypto-proxy: mongo error:", e.message));
+mongoose.connection.on("disconnected", () => console.error("crypto-proxy: mongo disconnected (driver will retry)"));
+mongoose.connection.on("reconnected", () => console.log("crypto-proxy: mongo reconnected"));
+
+mongoose.connect(config.mongoUri, mongoOpts()).then(() => {
   console.log("crypto-proxy: mongo connected");
   const server = app.listen(config.port, () => console.log(`crypto-proxy on :${config.port}`));
   for (const sig of ["SIGTERM", "SIGINT"]) {
@@ -72,7 +90,8 @@ mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000, socketTimeou
     });
   }
 }).catch((e) => {
-  console.error("Missing env or mongo down:", e.message);
+  console.error("Mongo connect failed:", e.message);
+  console.error("If MONGO_URI is Atlas: allow your IP in Network Access, check the DB user password, and use the full mongodb+srv:// string.");
   process.exit(1);
 });
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e && e.message));

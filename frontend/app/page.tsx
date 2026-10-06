@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Cloud, FileText, Lock, Search, ShieldCheck, Upload } from "lucide-react";
+import { ArrowRight, Database, FileText, Lock, Search, ShieldCheck, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -29,13 +29,13 @@ const FEATURES = [
   },
   {
     icon: ShieldCheck,
-    title: "Encryption-ready",
-    description: "Sensitive fields pass through an encryption service designed for KMS from day one.",
+    title: "AES-256-GCM encryption",
+    description: "Cases and notes are locked with per-tenant keys; every file gets its own envelope key before storage.",
   },
   {
-    icon: Cloud,
-    title: "Cloud-ready foundation",
-    description: "Local storage and mock data today behind interfaces that map to S3 and DynamoDB tomorrow.",
+    icon: Database,
+    title: "MongoDB + Backblaze B2",
+    description: "Locked case data lives in MongoDB; locked files live in Backblaze B2 object storage. Plaintext never touches either.",
   },
 ];
 
@@ -145,8 +145,8 @@ export default function LandingPage() {
             <ul className="space-y-3">
               {[
                 "Workspace-scoped data access on every query",
-                "AES-256 encryption service, KMS-compatible interface",
-                "Audit log of who viewed, changed or deleted what",
+                "AES-256-GCM envelope encryption, per-tenant keys with rotation",
+                "Locked records in MongoDB, locked files in Backblaze B2 object storage",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-zinc-200">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#e3b341]" aria-hidden />
