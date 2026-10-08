@@ -16,7 +16,7 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
 
   async function handleLogout() {
     await signOut();
-    router.push(ROUTES.login);
+    router.push(ROUTES.landing);
   }
 
   return (

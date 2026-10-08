@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1040" font-family="Inter, 'Segoe UI', system-ui, sans-serif" role="img">
+<title>LegalVault System Architecture</title>
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M0 0L10 5L0 10z" fill="#334155"/>
+  </marker>
+  <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M0 0L10 5L0 10z" fill="#7C3AED"/>
+  </marker>
+  <filter id="s" x="-10%" y="-10%" width="120%" height="130%">
+    <feDropShadow dx="0" dy="3" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.12"/>
+  </filter>
+</defs>
+
+<rect width="1400" height="1040" fill="#FFFFFF"/>
+<text x="700" y="44" text-anchor="middle" font-size="26" font-weight="800" fill="#0F172A">LegalVault — System Architecture</text>
+<text x="700" y="68" text-anchor="middle" font-size="13" fill="#64748B">Frontend • API Gateway • Auth • Case • File • Crypto-Proxy • MongoDB • Object Storage (B2)</text>
+
+<!-- CLIENT -->
+<g filter="url(#s)">
+  <rect x="550" y="95" width="300" height="72" rx="12" fill="#F1F5F9" stroke="#0F172A" stroke-width="2"/>
+  <text x="700" y="124" text-anchor="middle" font-size="15" font-weight="800" fill="#0F172A">💻 Client — Browser</text>
+  <text x="700" y="145" text-anchor="middle" font-size="12" fill="#64748B">Next.js Dashboard</text>
+</g>
+
+<!-- FRONTEND SERVER -->
+<g filter="url(#s)">
+  <rect x="480" y="210" width="440" height="96" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="2.5"/>
+  <rect x="500" y="228" width="44" height="60" rx="6" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.6"/>
+  <line x1="507" y1="239" x2="537" y2="239" stroke="#2563EB" stroke-width="2" stroke-linecap="round"/>
+  <line x1="507" y1="250" x2="537" y2="250" stroke="#2563EB" stroke-width="2" stroke-linecap="round"/>
+  <line x1="507" y1="261" x2="537" y2="261" stroke="#2563EB" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="511" cy="279" r="3" fill="#2563EB"/><circle cx="521" cy="279" r="3" fill="#2563EB"/>
+  <text x="740" y="246" text-anchor="middle" font-size="16" font-weight="800" fill="#1E3A8A">Frontend Server</text>
+  <text x="740" y="267" text-anchor="middle" font-size="12.5" fill="#475569">Next.js • :3000</text>
+  <text x="740" y="287" text-anchor="middle" font-size="12" fill="#475569">Web UI → gateway only</text>
+</g>
+
+<!-- API GATEWAY -->
+<g filter="url(#s)">
+  <rect x="430" y="335" width="540" height="100" rx="12" fill="#FFFBEB" stroke="#D97706" stroke-width="3"/>
+  <rect x="450" y="353" width="44" height="60" rx="6" fill="#FFFFFF" stroke="#D97706" stroke-width="1.6"/>
+  <line x1="457" y1="364" x2="487" y2="364" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+  <line x1="457" y1="375" x2="487" y2="375" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+  <line x1="457" y1="386" x2="487" y2="386" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="461" cy="404" r="3" fill="#D97706"/><circle cx="471" cy="404" r="3" fill="#D97706"/>
+  <text x="730" y="371" text-anchor="middle" font-size="16" font-weight="800" fill="#92400E">API Gateway Server</text>
+  <text x="730" y="392" text-anchor="middle" font-size="12.5" fill="#475569">Express • :4000 — single entry point</text>
+  <text x="730" y="412" text-anchor="middle" font-size="12" fill="#475569">/auth → :4001 • /cases /notes → :4002 • /files → :4003</text>
+</g>
+
+<!-- AUTH SERVER -->
+<g filter="url(#s)">
+  <rect x="80" y="465" width="360" height="108" rx="12" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2.5"/>
+  <rect x="100" y="483" width="40" height="60" rx="6" fill="#FFF" stroke="#7C3AED" stroke-width="1.6"/>
+  <line x1="106" y1="494" x2="134" y2="494" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/>
+  <line x1="106" y1="505" x2="134" y2="505" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/>
+  <line x1="106" y1="516" x2="134" y2="516" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/>
+  <text x="290" y="499" text-anchor="middle" font-size="15" font-weight="800" fill="#4C1D95">Auth Server</text>
+  <text x="290" y="520" text-anchor="middle" font-size="12.5" fill="#475569">Express • :4001</text>
+  <text x="290" y="540" text-anchor="middle" font-size="12" fill="#475569">JWT Issuer (RS256)</text>
+</g>
+
+<!-- CASE SERVER -->
+<g filter="url(#s)">
+  <rect x="520" y="465" width="360" height="108" rx="12" fill="#FFF7ED" stroke="#EA580C" stroke-width="2.5"/>
+  <rect x="540" y="483" width="40" height="60" rx="6" fill="#FFF" stroke="#EA580C" stroke-width="1.6"/>
+  <line x1="546" y1="494" x2="574" y2="494" stroke="#EA580C" stroke-width="2" stroke-linecap="round"/>
+  <line x1="546" y1="505" x2="574" y2="505" stroke="#EA580C" stroke-width="2" stroke-linecap="round"/>
+  <line x1="546" y1="516" x2="574" y2="516" stroke="#EA580C" stroke-width="2" stroke-linecap="round"/>
+  <text x="730" y="499" text-anchor="middle" font-size="15" font-weight="800" fill="#9A3412">Case Server</text>
+  <text x="730" y="520" text-anchor="middle" font-size="12.5" fill="#475569">Express • :4002</text>
+  <text x="730" y="540" text-anchor="middle" font-size="12" fill="#475569">Cases + Notes API</text>
+</g>
+
+<!-- FILE SERVER -->
+<g filter="url(#s)">
+  <rect x="960" y="465" width="360" height="108" rx="12" fill="#ECFDF5" stroke="#0D9488" stroke-width="2.5"/>
+  <rect x="980" y="483" width="40" height="60" rx="6" fill="#FFF" stroke="#0D9488" stroke-width="1.6"/>
+  <line x1="986" y1="494" x2="1014" y2="494" stroke="#0D9488" stroke-width="2" stroke-linecap="round"/>
+  <line x1="986" y1="505" x2="1014" y2="505" stroke="#0D9488" stroke-width="2" stroke-linecap="round"/>
+  <line x1="986" y1="516" x2="1014" y2="516" stroke="#0D9488" stroke-width="2" stroke-linecap="round"/>
+  <text x="1170" y="499" text-anchor="middle" font-size="15" font-weight="800" fill="#115E59">File Server</text>
+  <text x="1170" y="520" text-anchor="middle" font-size="12.5" fill="#475569">Express • :4003</text>
+  <text x="1170" y="540" text-anchor="middle" font-size="12" fill="#475569">Upload / Download API</text>
+</g>
+
+<!-- CRYPTO SERVER -->
+<g filter="url(#s)">
+  <rect x="430" y="625" width="540" height="104" rx="12" fill="#FEF2F2" stroke="#DC2626" stroke-width="3"/>
+  <rect x="450" y="643" width="40" height="60" rx="6" fill="#FFF" stroke="#DC2626" stroke-width="1.6"/>
+  <line x1="456" y1="654" x2="484" y2="654" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+  <line x1="456" y1="665" x2="484" y2="665" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+  <line x1="456" y1="676" x2="484" y2="676" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+  <text x="730" y="661" text-anchor="middle" font-size="16" font-weight="800" fill="#991B1B">Crypto-Proxy Server</text>
+  <text x="730" y="682" text-anchor="middle" font-size="12.5" fill="#475569">Express • :4004 • AES-256-GCM</text>
+  <text x="730" y="702" text-anchor="middle" font-size="12" fill="#475569">Encryption + Key Management</text>
+</g>
+
+<!-- DATABASE : MongoDB cylinder -->
+<g filter="url(#s)">
+  <ellipse cx="350" cy="805" rx="150" ry="26" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5"/>
+  <rect x="200" y="805" width="300" height="90" fill="#F0FDF4" stroke="#16A34A" stroke-width="2.5"/>
+  <line x1="200" y1="805" x2="200" y2="895" stroke="#16A34A" stroke-width="2.5"/>
+  <line x1="500" y1="805" x2="500" y2="895" stroke="#16A34A" stroke-width="2.5"/>
+  <ellipse cx="350" cy="895" rx="150" ry="26" fill="#FFFFFF" stroke="#16A34A" stroke-width="2.5"/>
+  <ellipse cx="350" cy="805" rx="150" ry="26" fill="none" stroke="#16A34A" stroke-width="2.5"/>
+  <text x="350" y="845" text-anchor="middle" font-size="16" font-weight="800" fill="#14532D">Database</text>
+  <text x="350" y="865" text-anchor="middle" font-size="12.5" fill="#475569">MongoDB Atlas</text>
+  <text x="350" y="883" text-anchor="middle" font-size="11.5" fill="#475569">Users • Cases • Notes</text>
+</g>
+
+<!-- OBJECT STORAGE : bucket -->
+<g filter="url(#s)">
+  <rect x="800" y="790" width="430" height="120" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="2.5"/>
+  <path d="M830 812 h70 l-8 60 h-54 z" fill="#FFFFFF" stroke="#0284C7" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="865" cy="812" rx="35" ry="8" fill="none" stroke="#0284C7" stroke-width="2"/>
+  <text x="1070" y="830" text-anchor="middle" font-size="16" font-weight="800" fill="#0C4A6E">Object Storage</text>
+  <text x="1070" y="852" text-anchor="middle" font-size="12.5" fill="#475569">Backblaze B2 (S3)</text>
+  <text x="1070" y="872" text-anchor="middle" font-size="11.5" fill="#475569">Encrypted Files • private bucket</text>
+</g>
+
+<!-- ===== CONNECTIONS ===== -->
+<!-- Client -> Frontend -->
+<line x1="700" y1="167" x2="700" y2="205" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="716" y="189" font-size="11" font-weight="700" fill="#334155">HTTPS</text>
+
+<!-- Frontend -> Gateway -->
+<line x1="700" y1="306" x2="700" y2="330" stroke="#334155" stroke-width="2.6" marker-end="url(#a)"/>
+<text x="716" y="322" font-size="11" font-weight="700" fill="#334155">all API → :4000</text>
+
+<!-- Gateway -> Auth / Case / File -->
+<line x1="580" y1="435" x2="280" y2="460" stroke="#334155" stroke-width="2.2" marker-end="url(#a)"/>
+<line x1="700" y1="435" x2="700" y2="460" stroke="#334155" stroke-width="2.2" marker-end="url(#a)"/>
+<line x1="820" y1="435" x2="1140" y2="460" stroke="#334155" stroke-width="2.2" marker-end="url(#a)"/>
+<text x="400" y="452" font-size="11" font-weight="700" fill="#334155">/auth</text>
+<text x="716" y="452" font-size="11" font-weight="700" fill="#334155">/cases /notes</text>
+<text x="1000" y="452" font-size="11" font-weight="700" fill="#334155">/files</text>
+
+<!-- JWKS dashed -->
+<line x1="440" y1="519" x2="515" y2="519" stroke="#7C3AED" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ad)"/>
+<line x1="880" y1="519" x2="955" y2="519" stroke="#7C3AED" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ad)"/>
+<text x="477" y="510" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7C3AED">JWKS</text>
+<text x="917" y="510" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7C3AED">JWKS</text>
+<path d="M260 573 L260 604 L580 604 L580 620" fill="none" stroke="#7C3AED" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ad)"/>
+<text x="400" y="598" font-size="10.5" font-weight="700" fill="#7C3AED">JWKS</text>
+
+<!-- Case -> Crypto, File -> Crypto -->
+<line x1="650" y1="573" x2="620" y2="620" stroke="#334155" stroke-width="2.4" marker-end="url(#a)"/>
+<line x1="1140" y1="573" x2="820" y2="620" stroke="#334155" stroke-width="2.4" marker-end="url(#a)"/>
+<text x="560" y="602" font-size="11" font-weight="700" fill="#334155">encrypt</text>
+<text x="1010" y="602" font-size="11" font-weight="700" fill="#334155">encrypt</text>
+
+<!-- Auth -> Database -->
+<path d="M150 573 L150 760 L195 760 L195 800" fill="none" stroke="#334155" stroke-width="2.2" marker-end="url(#a)"/>
+
+<!-- Crypto -> Database / Object storage -->
+<line x1="550" y1="729" x2="400" y2="780" stroke="#334155" stroke-width="2.4" marker-end="url(#a)"/>
+<line x1="850" y1="729" x2="1000" y2="785" stroke="#334155" stroke-width="2.4" marker-end="url(#a)"/>
+<text x="430" y="762" font-size="11" font-weight="700" fill="#334155">ciphertext</text>
+<text x="950" y="762" font-size="11" font-weight="700" fill="#334155">ciphertext</text>
+
+<!-- Legend -->
+<g font-size="11.5" fill="#64748B">
+  <line x1="80" y1="985" x2="120" y2="985" stroke="#334155" stroke-width="2.2" marker-end="url(#a)"/>
+  <text x="128" y="989">data request</text>
+  <line x1="260" y1="985" x2="300" y2="985" stroke="#7C3AED" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ad)"/>
+  <text x="308" y="989">public-key (JWKS)</text>
+  <rect x="480" y="974" width="16" height="16" rx="3" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="502" y="987">server</text>
+  <ellipse cx="590" cy="982" rx="12" ry="7" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
+  <text x="608" y="987">database</text>
+  <rect x="700" y="974" width="16" height="16" rx="3" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+  <text x="722" y="987">object storage</text>
+</g>
+
+</svg>

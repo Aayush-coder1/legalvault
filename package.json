@@ -5,6 +5,7 @@
   "description": "LegalVault - safe place for lawyers to store cases, notes and files",
   "scripts": {
     "gen:keys": "node scripts/generate-jwt-keys.js",
+    "dev:gateway": "npm --prefix services/api-gateway run dev",
     "dev:auth": "npm --prefix services/auth-service run dev",
     "dev:crypto": "npm --prefix services/crypto-proxy run dev",
     "dev:case": "npm --prefix services/case-service run dev",

@@ -7,9 +7,12 @@ RUN npm install
 COPY . ./
 
 # Baked in at build time (browser uses these; localhost = user's browser, correct).
-ARG NEXT_PUBLIC_AUTH_URL=http://localhost:4001
-ARG NEXT_PUBLIC_CASE_URL=http://localhost:4002
-ARG NEXT_PUBLIC_FILE_URL=http://localhost:4003
+# All point at the api-gateway (single entry point, port 4000).
+ARG NEXT_PUBLIC_GATEWAY_URL=http://localhost:4000
+ARG NEXT_PUBLIC_AUTH_URL=http://localhost:4000
+ARG NEXT_PUBLIC_CASE_URL=http://localhost:4000
+ARG NEXT_PUBLIC_FILE_URL=http://localhost:4000
+ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
 ENV NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL
 ENV NEXT_PUBLIC_CASE_URL=$NEXT_PUBLIC_CASE_URL
 ENV NEXT_PUBLIC_FILE_URL=$NEXT_PUBLIC_FILE_URL

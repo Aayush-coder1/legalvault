@@ -4,7 +4,7 @@ REM  LegalVault - one double-click starter (Windows)
 REM  1. Checks node/npm, env files and MongoDB
 REM  2. Installs missing dependencies (skips if present)
 REM  3. Opens each service in its own terminal, in boot order:
-REM     auth -> crypto -> case -> file -> frontend
+REM     auth -> crypto -> case -> file -> gateway -> frontend
 REM ============================================================
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
@@ -93,6 +93,8 @@ call npm --prefix services\case-service install --no-audit --no-fund
 if errorlevel 1 goto :installfail
 call npm --prefix services\file-service install --no-audit --no-fund
 if errorlevel 1 goto :installfail
+call npm --prefix services\api-gateway install --no-audit --no-fund
+if errorlevel 1 goto :installfail
 call npm --prefix frontend install --no-audit --no-fund
 if errorlevel 1 goto :installfail
 echo.
@@ -100,7 +102,7 @@ echo  [OK] All dependencies ready
 echo.
 
 REM ---- 5. launch each service in its own terminal (boot order matters) ----
-echo  Starting services in order: auth -^> crypto -^> case -^> file -^> frontend
+echo  Starting services in order: auth -^> crypto -^> case -^> file -^> gateway -^> frontend
 echo.
 
 start "LegalVault - auth-service :4001" cmd /k "cd /d "%~dp0services\auth-service" && npm run dev"
@@ -115,21 +117,25 @@ timeout /t 3 /nobreak >nul
 start "LegalVault - file-service :4003" cmd /k "cd /d "%~dp0services\file-service" && npm run dev"
 timeout /t 3 /nobreak >nul
 
+start "LegalVault - api-gateway :4000" cmd /k "cd /d "%~dp0services\api-gateway" && npm run dev"
+timeout /t 3 /nobreak >nul
+
 start "LegalVault - frontend :3000" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 
-echo  All 5 terminals launched.
+echo  All 6 terminals launched.
 echo.
 echo  Health checks (wait ~30s for Next.js first build, then open these):
 echo    http://localhost:4001/health
 echo    http://localhost:4004/health
 echo    http://localhost:4002/health
 echo    http://localhost:4003/health
+echo    http://localhost:4000/health
 echo    http://localhost:3000  ^<-- app
 echo.
 set /p OPENBROWSER="Open http://localhost:3000 in browser now? (Y/n): "
 if /i not "%OPENBROWSER%"=="n" start "" "http://localhost:3000"
 echo.
-echo  To stop everything: close the 5 service windows (or Ctrl+C in each).
+echo  To stop everything: close the 6 service windows (or Ctrl+C in each).
 echo  This launcher window can be closed.
 pause
 exit /b 0
