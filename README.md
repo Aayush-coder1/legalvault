@@ -1,28 +1,124 @@
 # LegalVault
 
-Zero-Knowledge Multi-Tenant Legal Evidence Management Platform
-Initial plan:
-## Tech Stack
+Safe place for lawyers to store cases, notes, and files.
+Next.js frontend + 3 Express services + crypto-proxy (AES-256-GCM) + local MongoDB (Compass) + Backblaze B2.
 
-Frontend:
-- Next.js
-- TypeScript
-- Tailwind CSS
+```
+legalvault/
+├── frontend/              # Next.js website (port 3000)
+├── services/
+│   ├── auth-service/      # signup/login, RS256 JWT, JWKS (port 4001)
+│   ├── case-service/      # cases + notes, forwards to crypto-proxy (port 4002)
+│   ├── file-service/      # upload/download, forwards to crypto-proxy (port 4003)
+│   └── crypto-proxy/      # tenant keys, encrypt/decrypt, MongoDB + B2 (port 4004)
+├── packages/shared/       # shared response + constants
+├── scripts/generate-jwt-keys.js
+├── docs/                  # per-service design docs + plan.md
+├── .env                   # your secrets (gitignored, never commit)
+└── .env.example           # template
+```
 
-Backend:
-- Node.js
-- TypeScript
-- JWT
+Flow: `Next.js → auth/case/file → crypto-proxy → MongoDB / B2` (only locked data touches storage).
 
-Storage:
-- DynamoDB
-- S3
+## Needs (no Docker)
 
-Security:
-- KMS
-- Multi-Tenant Encrypted DB Proxy Engine
+- Node.js 22
+- A MongoDB Atlas cluster (free M0 is fine) + its connection string
+- A Backblaze B2 bucket (private) + application key limited to that bucket
 
-## Team Members
+Atlas setup (one time, in cloud.mongodb.com):
+1. Create a cluster, then **Database Access** → add a user + password.
+2. **Network Access** → allow your IP (or `0.0.0.0/0` for dev only).
+3. **Connect → Drivers → Node.js** → copy the `mongodb+srv://...` string,
+   replace `<password>`, and append the db name: `...mongodb.net/legalvault`.
 
-- Aayush Ajay Wanve,D12C,63
-- Ruturaj Amit Rajwade,D12c,46
+## Setup (one time)
+
+```bash
+cd legalvault
+
+# 1. env files
+cp .env.example .env
+cp frontend/.env.example frontend/.env.local
+
+# 2. install everything (cd into each folder, then npm i)
+cd services/auth-service && npm i && cd ../..
+cd services/crypto-proxy && npm i && cd ../..
+cd services/case-service && npm i && cd ../..
+cd services/file-service && npm i && cd ../..
+# at last, the frontend
+cd frontend && npm i && cd ..
+```
+
+Fill in root `.env`:
+
+```env
+MONGO_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/legalvault
+JWKS_URL=http://localhost:4001/auth/jwks.json
+CRYPTO_PROXY_URL=http://localhost:4004
+
+JWT_PRIVATE_KEY="..."   # from: npm run gen:keys
+JWT_PUBLIC_KEY="..."    # from: npm run gen:keys
+
+CRYPTO_MASTER_KEY=...   # from: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+B2_ENDPOINT=https://s3.us-east-005.backblazeb2.com   # your bucket's "S3 Endpoint" (with https://)
+B2_REGION=us-east-005
+B2_KEY_ID=...           # B2 application key ID (full value, e.g. 005xxx...0001)
+B2_APP_KEY=...          # B2 application key secret (shown once at creation)
+B2_BUCKET=legalvault
+```
+
+`frontend/.env.local` stays as-is:
+
+```env
+NEXT_PUBLIC_AUTH_URL=http://localhost:4001
+NEXT_PUBLIC_CASE_URL=http://localhost:4002
+NEXT_PUBLIC_FILE_URL=http://localhost:4003
+```
+
+## Start (5 terminals, in this order)
+
+```bash
+# terminal 1
+cd services/auth-service && npm run dev
+# terminal 2
+cd services/crypto-proxy && npm run dev
+# terminal 3
+cd services/case-service && npm run dev
+# terminal 4
+cd services/file-service && npm run dev
+# terminal 5 (at last, the frontend)
+cd frontend && npm run dev
+```
+
+Open `http://localhost:3000` → sign up → dashboard. Auth first because the other
+services verify tokens against its `GET /auth/jwks.json`.
+
+## Check it works
+
+```bash
+curl http://localhost:4001/health
+curl http://localhost:4002/health
+curl http://localhost:4003/health
+curl http://localhost:4004/health
+```
+
+Then in the browser: create a case → upload a file → download it back.
+Deleting a case also deletes its notes, its file metadata, and its objects in B2.
+
+## Rules that bite
+
+- `.env` loads at boot: after editing it, restart that service (Ctrl+C, run again).
+  Code changes hot-reload by themselves (`node --watch` / Turbopack).
+- Local terminals need `localhost` service URLs (`JWKS_URL`, `CRYPTO_PROXY_URL`).
+  `MONGO_URI` is your Atlas cloud URL (not localhost). Service names
+  (`auth-service`, `host.docker.internal`) only work inside Docker —
+  mixing them gives `Invalid or expired token` on every case/file request.
+- If auth/crypto-proxy exit at boot with a Mongo error on an Atlas URL:
+  check Network Access IP allowlist + DB user password in Atlas.
+- Access tokens live 15 minutes and the frontend has no silent refresh:
+  if calls start failing after idle time, log out and back in.
+- Never commit `.env` or `*.pem`. Keys in `.env.example` are dev-only examples.
+- B2 bucket lifecycle `Keep all versions` hides deleted files but retains versions;
+  switch the bucket to `Keep only last version` if deletes should free space.
