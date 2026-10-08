@@ -22,7 +22,7 @@ Flow: `Next.js → auth/case/file → crypto-proxy → MongoDB / B2` (only locke
 
 ## 📐 System Architecture & Simulation
 
-- **Architecture Diagram:** `docs/architecture/architecture.png`
+- **Architecture Diagram:** [Architecture Diagram](docs/architecture.svg)
 - **Interactive Traffic Model:** [View LegalVault Simulation on Breakscale](https://breakscale.tech/?s=xtcZJPGSEuJYLg#k=aeI-Gssx8x7JSn1OVgb11w)
 
 ![LegalVault Breakscale Simulation](docs/breakscale-simulation.png)
