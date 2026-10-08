@@ -20,6 +20,13 @@ legalvault/
 
 Flow: `Next.js → auth/case/file → crypto-proxy → MongoDB / B2` (only locked data touches storage).
 
+## 📐 System Architecture & Simulation
+
+- **Architecture Diagram:** `docs/architecture/architecture.png`
+- **Interactive Traffic Model:** [View LegalVault Simulation on Breakscale](https://breakscale.tech/?s=xtcZJPGSEuJYLg#k=aeI-Gssx8x7JSn1OVgb11w)
+
+![LegalVault Breakscale Simulation](docs/breakscale-simulation.png)
+
 ## Needs (no Docker)
 
 - Node.js 22
