@@ -1,0 +1,228 @@
+# Render Blueprint — LegalVault (5 backends + Next.js frontend)
+# Deploy: push this file at repo root, then Render Dashboard → New → Blueprint → select repo.
+# After first deploy, fill the `sync: false` secrets in the Dashboard (they prompt on Blueprint create).
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ---------- auth-service :4001 (Mongo required, issues JWT) ----------
+  - type: web
+    name: legalvault-auth
+    runtime: node
+    rootDir: services/auth-service
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4001"
+      - key: AUTH_PORT
+        value: "4001"
+      - key: MONGO_URI
+        sync: false # e.g. mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/legalvault
+      - key: JWT_PRIVATE_KEY
+        sync: false # RS256 private PEM (use \n for newlines)
+      - key: JWT_PUBLIC_KEY
+        sync: false # RS256 public PEM (use \n for newlines)
+      - key: JWT_KID
+        value: legalvault-1
+      - key: JWT_ISSUER
+        value: legalvault-auth
+      - key: JWT_AUDIENCE
+        value: legalvault-app
+      - key: ACCESS_TTL
+        value: 15m
+      - key: REFRESH_TTL
+        value: 7d
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: legalvault-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ---------- crypto-proxy :4004 (Mongo + B2 required, internal only in practice) ----------
+  - type: web # change to `pserv` (private) on a paid plan to hide it from the internet
+    name: legalvault-crypto
+    runtime: node
+    rootDir: services/crypto-proxy
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4004"
+      - key: CRYPTO_PORT
+        value: "4004"
+      - key: MONGO_URI
+        sync: false # same Atlas string as auth-service
+      - key: JWKS_URL
+        value: http://legalvault-auth:4001/auth/jwks.json # private-network URL
+      - key: JWT_ISSUER
+        value: legalvault-auth
+      - key: JWT_AUDIENCE
+        value: legalvault-app
+      - key: CRYPTO_MASTER_KEY
+        sync: false # base64 of 32 bytes
+      - key: B2_ENDPOINT
+        sync: false # e.g. https://s3.us-west-004.backblazeb2.com
+      - key: B2_REGION
+        value: us-east-1
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APP_KEY
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: legalvault-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ---------- case-service :4002 ----------
+  - type: web
+    name: legalvault-case
+    runtime: node
+    rootDir: services/case-service
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4002"
+      - key: CASE_PORT
+        value: "4002"
+      - key: MONGO_URI
+        sync: false # optional for this service (uses crypto-proxy for storage)
+      - key: JWKS_URL
+        value: http://legalvault-auth:4001/auth/jwks.json
+      - key: JWT_ISSUER
+        value: legalvault-auth
+      - key: JWT_AUDIENCE
+        value: legalvault-app
+      - key: CRYPTO_PROXY_URL
+        value: http://legalvault-crypto:4004
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: legalvault-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ---------- file-service :4003 ----------
+  - type: web
+    name: legalvault-file
+    runtime: node
+    rootDir: services/file-service
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4003"
+      - key: FILE_PORT
+        value: "4003"
+      - key: JWKS_URL
+        value: http://legalvault-auth:4001/auth/jwks.json
+      - key: JWT_ISSUER
+        value: legalvault-auth
+      - key: JWT_AUDIENCE
+        value: legalvault-app
+      - key: CRYPTO_PROXY_URL
+        value: http://legalvault-crypto:4004
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: legalvault-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ---------- api-gateway :4000 (single public entry point for the frontend) ----------
+  - type: web
+    name: legalvault-gateway
+    runtime: node
+    rootDir: services/api-gateway
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: GATEWAY_PORT
+        value: "4000"
+      - key: AUTH_URL
+        value: http://legalvault-auth:4001
+      - key: CASE_URL
+        value: http://legalvault-case:4002
+      - key: FILE_URL
+        value: http://legalvault-file:4003
+      - key: GATEWAY_TIMEOUT_MS
+        value: "30000"
+      - key: GATEWAY_BODY_LIMIT_MB
+        value: "30"
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: legalvault-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # ---------- frontend :3000 (Next.js — talks ONLY to the gateway's public URL) ----------
+  - type: web
+    name: legalvault-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # All four point at the gateway (it fans out to auth/case/file).
+      # Sourced from the gateway's external URL so no hardcoding is needed.
+      - key: NEXT_PUBLIC_GATEWAY_URL
+        fromService:
+          type: web
+          name: legalvault-gateway
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_AUTH_URL
+        fromService:
+          type: web
+          name: legalvault-gateway
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_CASE_URL
+        fromService:
+          type: web
+          name: legalvault-gateway
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_FILE_URL
+        fromService:
+          type: web
+          name: legalvault-gateway
+          envVarKey: RENDER_EXTERNAL_URL
