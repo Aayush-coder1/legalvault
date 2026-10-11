@@ -1,27 +1,14 @@
 # Render Blueprint — LegalVault (5 backends + Next.js frontend)
 # Deploy: push this file at repo root, then Render Dashboard → New → Blueprint → select repo.
-# After first deploy, fill the `sync: false` secrets in the Dashboard (they prompt on Blueprint create).
+# Mirrors local dev: ALL services share ONE env set (the `legalvault-env` group below),
+# just like they all read the repo-root `.env` locally. Fill the `sync: false`
+# secrets once on Blueprint create — every service inherits them.
 # Docs: https://render.com/docs/blueprint-spec
 
-services:
-  # ---------- auth-service :4001 (Mongo required, issues JWT) ----------
-  - type: web
-    name: legalvault-auth
-    runtime: node
-    rootDir: services/auth-service
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
-    plan: free
+# ---------- Shared env ( = repo-root .env ) ----------
+envVarGroups:
+  - name: legalvault-env
     envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "4001"
-      - key: AUTH_PORT
-        value: "4001"
       - key: MONGO_URI
         sync: false # e.g. mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/legalvault
       - key: JWT_PRIVATE_KEY
@@ -38,6 +25,40 @@ services:
         value: 15m
       - key: REFRESH_TTL
         value: 7d
+      - key: CRYPTO_MASTER_KEY
+        sync: false # base64 of 32 bytes
+      - key: B2_ENDPOINT
+        sync: false # e.g. https://s3.us-west-004.backblazeb2.com
+      - key: B2_REGION
+        value: us-east-1
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APP_KEY
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+
+services:
+  # ---------- auth-service :4001 (Mongo required, issues JWT) ----------
+  - type: web
+    name: legalvault-auth
+    runtime: node
+    rootDir: services/auth-service
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVarGroups:
+      - legalvault-env
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4001"
+      - key: AUTH_PORT
+        value: "4001"
       - key: FRONTEND_URL
         fromService:
           type: web
@@ -53,6 +74,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     plan: free
+    envVarGroups:
+      - legalvault-env
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -62,26 +85,8 @@ services:
         value: "4004"
       - key: CRYPTO_PORT
         value: "4004"
-      - key: MONGO_URI
-        sync: false # same Atlas string as auth-service
       - key: JWKS_URL
         value: http://legalvault-auth:4001/auth/jwks.json # private-network URL
-      - key: JWT_ISSUER
-        value: legalvault-auth
-      - key: JWT_AUDIENCE
-        value: legalvault-app
-      - key: CRYPTO_MASTER_KEY
-        sync: false # base64 of 32 bytes
-      - key: B2_ENDPOINT
-        sync: false # e.g. https://s3.us-west-004.backblazeb2.com
-      - key: B2_REGION
-        value: us-east-1
-      - key: B2_KEY_ID
-        sync: false
-      - key: B2_APP_KEY
-        sync: false
-      - key: B2_BUCKET
-        sync: false
       - key: FRONTEND_URL
         fromService:
           type: web
@@ -97,6 +102,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     plan: free
+    envVarGroups:
+      - legalvault-env
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -106,14 +113,8 @@ services:
         value: "4002"
       - key: CASE_PORT
         value: "4002"
-      - key: MONGO_URI
-        sync: false # optional for this service (uses crypto-proxy for storage)
       - key: JWKS_URL
         value: http://legalvault-auth:4001/auth/jwks.json
-      - key: JWT_ISSUER
-        value: legalvault-auth
-      - key: JWT_AUDIENCE
-        value: legalvault-app
       - key: CRYPTO_PROXY_URL
         value: http://legalvault-crypto:4004
       - key: FRONTEND_URL
@@ -131,6 +132,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     plan: free
+    envVarGroups:
+      - legalvault-env
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -142,10 +145,6 @@ services:
         value: "4003"
       - key: JWKS_URL
         value: http://legalvault-auth:4001/auth/jwks.json
-      - key: JWT_ISSUER
-        value: legalvault-auth
-      - key: JWT_AUDIENCE
-        value: legalvault-app
       - key: CRYPTO_PROXY_URL
         value: http://legalvault-crypto:4004
       - key: FRONTEND_URL
@@ -163,6 +162,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     plan: free
+    envVarGroups:
+      - legalvault-env
     envVars:
       - key: NODE_VERSION
         value: "22"
