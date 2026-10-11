@@ -31,7 +31,7 @@ function parseMs(v, fb) {
 }
 
 const config = {
-  port: Number(process.env.AUTH_PORT || 4001),
+  port: Number(process.env.PORT || process.env.AUTH_PORT || 4001),
   mongoUri: need("MONGO_URI"),
   privateKey: pem("JWT_PRIVATE_KEY"),
   publicKey: pem("JWT_PUBLIC_KEY"),

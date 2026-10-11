@@ -14,7 +14,7 @@ function need(name) {
 }
 
 module.exports = {
-  port: Number(process.env.FILE_PORT || 4003),
+  port: Number(process.env.PORT || process.env.FILE_PORT || 4003),
   jwksUrl: process.env.JWKS_URL || "http://localhost:4001/auth/jwks.json",
   issuer: process.env.JWT_ISSUER || "legalvault-auth",
   audience: process.env.JWT_AUDIENCE || "legalvault-app",

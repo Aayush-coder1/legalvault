@@ -30,7 +30,7 @@ function masterKey() {
 }
 
 module.exports = {
-  port: Number(process.env.CRYPTO_PORT || 4004),
+  port: Number(process.env.PORT || process.env.CRYPTO_PORT || 4004),
   mongoUri: need("MONGO_URI"),
   jwksUrl: process.env.JWKS_URL || "http://localhost:4001/auth/jwks.json",
   issuer: process.env.JWT_ISSUER || "legalvault-auth",

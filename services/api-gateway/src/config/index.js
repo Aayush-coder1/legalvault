@@ -1,7 +1,7 @@
 const path = require("path");
 // Load repo-root .env first (npm --prefix runs us from the service dir),
 // then a local .env if present (fills only keys still missing).
-require("dotenv").config({ path: path.join(__dirname, "..", "..", "..", ".env") });
+require("dotenv").config({ path: path.join(__dirname, "..", "..", "..", "..", ".env") });
 require("dotenv").config();
 
 function need(name, fallback) {
@@ -14,7 +14,7 @@ function need(name, fallback) {
 }
 
 module.exports = {
-  port: Number(process.env.GATEWAY_PORT || 4000),
+  port: Number(process.env.PORT || process.env.GATEWAY_PORT || 4000),
   authUrl: (process.env.AUTH_URL || "http://localhost:4001").replace(/\/$/, ""),
   caseUrl: (process.env.CASE_URL || "http://localhost:4002").replace(/\/$/, ""),
   fileUrl: (process.env.FILE_URL || "http://localhost:4003").replace(/\/$/, ""),
