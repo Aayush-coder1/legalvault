@@ -1,0 +1,10 @@
+# file-service — local ignores only (applies inside this folder)
+node_modules/
+.env
+.env.*
+*.pem
+uploads/
+dist/
+coverage/
+*.log
+.DS_Store

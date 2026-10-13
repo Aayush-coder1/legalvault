@@ -1,0 +1,9 @@
+# api-gateway — local ignores only (applies inside this folder)
+node_modules/
+.env
+.env.*
+*.pem
+dist/
+coverage/
+*.log
+.DS_Store

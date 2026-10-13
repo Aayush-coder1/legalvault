@@ -1,7 +1,10 @@
+# Root-level only — each service/frontend has its own .gitignore.
+# Leading "/" scopes to repo root so src/keys/, src/uploads/ etc. are never shadowed.
 node_modules/
-.env
 *.pem
-keys/
-uploads/
-.next/
-dist/
+*.log
+.DS_Store
+/.env
+/.env.*
+/keys/
+/uploads/
