@@ -4,14 +4,18 @@
  * with a clear message (user fills .env.local).
  */
 
-function base(name: string, fallback: string): string {
-  const v = process.env[name] || fallback;
-  return v.replace(/\/$/, "");
+// NOTE: Next.js inlines process.env.* into the browser bundle at build time
+// ONLY for literal keys (process.env.NEXT_PUBLIC_X). Dynamic lookup like
+// process.env[name] is always undefined in the browser, so the localhost
+// fallback won below — no Render env change could ever fix that. Keep each
+// key literal.
+function strip(url: string): string {
+  return url.replace(/\/$/, "");
 }
 
-export const AUTH_URL = base("NEXT_PUBLIC_AUTH_URL", "http://localhost:4001");
-export const CASE_URL = base("NEXT_PUBLIC_CASE_URL", "http://localhost:4002");
-export const FILE_URL = base("NEXT_PUBLIC_FILE_URL", "http://localhost:4003");
+export const AUTH_URL = strip(process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:4001");
+export const CASE_URL = strip(process.env.NEXT_PUBLIC_CASE_URL || "http://localhost:4002");
+export const FILE_URL = strip(process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:4003");
 
 export class ApiError extends Error {
   code: string;
