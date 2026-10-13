@@ -11,6 +11,10 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4",
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "legalvault": "file:..",
@@ -21,12 +25,8 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
-    "typescript": "^5"
+    "eslint-config-next": "16.3.8"
   },
   "overrides": {
     "braces": "^3.0.3"
