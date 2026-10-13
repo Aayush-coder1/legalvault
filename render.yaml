@@ -3,6 +3,9 @@
 # Secrets are NOT in this file — add them manually per service in the Dashboard
 # (Environment tab). What stays here is only build/start commands plus
 # non-secret wiring (ports, internal URLs, JWT labels).
+# NOTE: Render forces PORT=10000 on every service at runtime (it overrides the
+# PORT values below — see deploy logs "on :10000"). So internal service-to-
+# service URLs MUST use :10000, not the local-dev ports (4000-4004).
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
@@ -61,7 +64,7 @@ services:
       - key: CRYPTO_PORT
         value: "4004"
       - key: JWKS_URL
-        value: http://legalvault-auth:4001/auth/jwks.json # private-network URL
+        value: http://legalvault-auth:10000/auth/jwks.json # private-network URL
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
@@ -94,13 +97,13 @@ services:
       - key: CASE_PORT
         value: "4002"
       - key: JWKS_URL
-        value: http://legalvault-auth:4001/auth/jwks.json
+        value: http://legalvault-auth:10000/auth/jwks.json
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
-        value: http://legalvault-crypto:4004
+        value: http://legalvault-crypto:10000
       - key: FRONTEND_URL
         fromService:
           type: web
@@ -127,13 +130,13 @@ services:
       - key: FILE_PORT
         value: "4003"
       - key: JWKS_URL
-        value: http://legalvault-auth:4001/auth/jwks.json
+        value: http://legalvault-auth:10000/auth/jwks.json
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
-        value: http://legalvault-crypto:4004
+        value: http://legalvault-crypto:10000
       - key: FRONTEND_URL
         fromService:
           type: web
@@ -160,11 +163,11 @@ services:
       - key: GATEWAY_PORT
         value: "4000"
       - key: AUTH_URL
-        value: http://legalvault-auth:4001
+        value: http://legalvault-auth:10000
       - key: CASE_URL
-        value: http://legalvault-case:4002
+        value: http://legalvault-case:10000
       - key: FILE_URL
-        value: http://legalvault-file:4003
+        value: http://legalvault-file:10000
       - key: GATEWAY_TIMEOUT_MS
         value: "30000"
       - key: GATEWAY_BODY_LIMIT_MB
