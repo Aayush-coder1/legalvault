@@ -3,9 +3,9 @@
 # Secrets are NOT in this file — add them manually per service in the Dashboard
 # (Environment tab). What stays here is only build/start commands plus
 # non-secret wiring (ports, internal URLs, JWT labels).
-# NOTE: Render forces PORT=10000 on every service at runtime (it overrides the
-# PORT values below — see deploy logs "on :10000"). So internal service-to-
-# service URLs MUST use :10000, not the local-dev ports (4000-4004).
+# NOTE: backend-to-backend uses public https URLs (not private hostnames),
+# pinned to the live service URLs so Blueprint syncs can't rewire them to
+# duplicates. Each service listens on its PORT below (explicit PORT wins).
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
@@ -39,10 +39,7 @@ services:
       - key: REFRESH_TTL
         value: 7d
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: legalvault-frontend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- crypto-proxy :4004 ----------
   # MANUAL SECRETS: MONGO_URI, CRYPTO_MASTER_KEY, B2_ENDPOINT, B2_KEY_ID, B2_APP_KEY, B2_BUCKET
@@ -64,7 +61,7 @@ services:
       - key: CRYPTO_PORT
         value: "4004"
       - key: JWKS_URL
-        value: http://legalvault-auth:10000/auth/jwks.json # private-network URL
+        value: https://legalvault-auth.onrender.com/auth/jwks.json # public URL (see header note)
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
@@ -72,10 +69,7 @@ services:
       - key: B2_REGION
         value: us-east-1
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: legalvault-frontend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- case-service :4002 ----------
   # MANUAL SECRETS: none required (MONGO_URI optional — uses crypto-proxy for storage)
@@ -97,18 +91,15 @@ services:
       - key: CASE_PORT
         value: "4002"
       - key: JWKS_URL
-        value: http://legalvault-auth:10000/auth/jwks.json
+        value: https://legalvault-auth.onrender.com/auth/jwks.json
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
-        value: http://legalvault-crypto:10000
+        value: https://legalvault-crypto.onrender.com
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: legalvault-frontend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- file-service :4003 ----------
   # MANUAL SECRETS: none required (storage secrets live in crypto-proxy)
@@ -130,18 +121,15 @@ services:
       - key: FILE_PORT
         value: "4003"
       - key: JWKS_URL
-        value: http://legalvault-auth:10000/auth/jwks.json
+        value: https://legalvault-auth.onrender.com/auth/jwks.json
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
-        value: http://legalvault-crypto:10000
+        value: https://legalvault-crypto.onrender.com
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: legalvault-frontend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- api-gateway :4000 (single public entry point for the frontend) ----------
   # MANUAL SECRETS: none required
@@ -163,20 +151,17 @@ services:
       - key: GATEWAY_PORT
         value: "4000"
       - key: AUTH_URL
-        value: http://legalvault-auth:10000
+        value: https://legalvault-auth.onrender.com
       - key: CASE_URL
-        value: http://legalvault-case:10000
+        value: https://legalvault-case.onrender.com
       - key: FILE_URL
-        value: http://legalvault-file:10000
+        value: https://legalvault-file.onrender.com
       - key: GATEWAY_TIMEOUT_MS
         value: "30000"
       - key: GATEWAY_BODY_LIMIT_MB
         value: "30"
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: legalvault-frontend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- frontend :3000 (Next.js — talks ONLY to the gateway's public URL) ----------
   # MANUAL SECRETS: none required
@@ -196,24 +181,12 @@ services:
       - key: PORT
         value: "3000"
       # All four point at the gateway (it fans out to auth/case/file).
-      # Sourced from the gateway's external URL so no hardcoding is needed.
+      # Pinned to the live gateway URL so syncs can't rewire to duplicates.
       - key: NEXT_PUBLIC_GATEWAY_URL
-        fromService:
-          type: web
-          name: legalvault-gateway
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-gateway.onrender.com
       - key: NEXT_PUBLIC_AUTH_URL
-        fromService:
-          type: web
-          name: legalvault-gateway
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-gateway.onrender.com
       - key: NEXT_PUBLIC_CASE_URL
-        fromService:
-          type: web
-          name: legalvault-gateway
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-gateway.onrender.com
       - key: NEXT_PUBLIC_FILE_URL
-        fromService:
-          type: web
-          name: legalvault-gateway
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://legalvault-gateway.onrender.com
