@@ -15,7 +15,14 @@ app.use((req, res, next) => {
 });
 
 app.use(cookieParser());
-app.use(cors({ origin: config.frontendUrl, credentials: true }));
+app.use(cors({
+  origin: config.frontendUrl,
+  credentials: true,
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-request-id", "x-forwarded-by"],
+  exposedHeaders: ["x-request-id"],
+  maxAge: 86400,
+}));
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -104,7 +111,21 @@ function readBody(req) {
 }
 
 const HOP = new Set(["host", "connection", "content-length", "transfer-encoding", "keep-alive", "upgrade"]);
-const RES_HOP = new Set(["content-encoding", "content-length", "transfer-encoding", "connection", "keep-alive"]);
+const RES_HOP = new Set([
+  "content-encoding",
+  "content-length",
+  "transfer-encoding",
+  "connection",
+  "keep-alive",
+  // Gateway owns CORS: strip upstream CORS headers so a stale FRONTEND_URL
+  // on auth/case/file can never overwrite the gateway's correct ACAO and
+  // break the browser with a wrong Access-Control-Allow-Origin.
+  "access-control-allow-origin",
+  "access-control-allow-credentials",
+  "access-control-allow-methods",
+  "access-control-allow-headers",
+  "access-control-expose-headers",
+]);
 
 function proxyTo(targetBase) {
   return async (req, res, next) => {

@@ -5,8 +5,22 @@ const { signAccessToken, newRefreshToken, hashToken } = require("./token.service
 const config = require("../config");
 
 function cookieOpts(ms) {
-  const secure = process.env.NODE_ENV === "production";
-  return { httpOnly: true, secure, sameSite: "lax", maxAge: ms, path: "/" };
+  // Cross-site deployment: frontend (…onrender.com) and gateway/auth
+  // (…onrender.com) are different hosts. SameSite=Lax cookies are never
+  // sent on cross-site fetch, so login would "succeed" (Set-Cookie stored)
+  // but every later /me + /refresh would 401 (cookie not sent).
+  // Production (https) => SameSite=None + Secure so the browser sends them.
+  // Local dev (http localhost, same-site across ports) => Lax without Secure
+  // (None without Secure is rejected by browsers).
+  const isProd = process.env.NODE_ENV === "production";
+  const override = (process.env.COOKIE_SAMESITE || "").toLowerCase();
+  const sameSite = override === "none" || override === "lax" || override === "strict"
+    ? override
+    : isProd
+      ? "none"
+      : "lax";
+  const secure = sameSite === "none" ? true : isProd;
+  return { httpOnly: true, secure, sameSite, maxAge: ms, path: "/" };
 }
 
 function normEmail(email) {

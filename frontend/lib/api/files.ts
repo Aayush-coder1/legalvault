@@ -1,4 +1,4 @@
-import { FILE_URL, api, ApiError } from "@/lib/api/client";
+import { FILE_URL, api, ApiError, authedFetch } from "@/lib/api/client";
 import type { Evidence } from "@/lib/types";
 import { ALLOWED_MIME_TYPES, MAX_FILE_BYTES } from "@/lib/config/constants";
 
@@ -20,16 +20,6 @@ export function fileCounts(caseIds: string[]) {
   return api<Record<string, number>>(`${FILE_URL}/files/counts?caseIds=${encodeURIComponent(caseIds.join(","))}`);
 }
 
-async function postForm(url: string, form: FormData, timeoutMs = 60000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    return await fetch(url, { method: "POST", credentials: "include", body: form, signal: ctrl.signal });
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 export async function uploadFile(caseId: string, file: File) {
   const err = validateClientFile(file);
   if (err) throw new ApiError("BAD_FILE", err, 400);
@@ -38,7 +28,8 @@ export async function uploadFile(caseId: string, file: File) {
   form.append("file", file);
   let res: Response;
   try {
-    res = await postForm(`${FILE_URL}/files/upload`, form);
+    // authedFetch attaches cookies + Bearer and refreshes once on 401.
+    res = await authedFetch(`${FILE_URL}/files/upload`, { method: "POST", body: form }, 60000);
   } catch {
     throw new Error("Upload timed out, try again");
   }
@@ -50,9 +41,8 @@ export async function uploadFile(caseId: string, file: File) {
 }
 
 export async function uploadNote(caseId: string, text: string) {
-  const res = await fetch(`${FILE_URL}/files/note`, {
+  const res = await authedFetch(`${FILE_URL}/files/note`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ caseId, text }),
   });
@@ -64,16 +54,11 @@ export async function uploadNote(caseId: string, text: string) {
 }
 
 export async function downloadFile(fileId: string, fileName: string) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 60000);
   let res: Response;
   try {
-    res = await fetch(`${FILE_URL}/files/${fileId}/download`, { credentials: "include", signal: ctrl.signal });
+    res = await authedFetch(`${FILE_URL}/files/${fileId}/download`, {}, 60000);
   } catch {
-    clearTimeout(t);
     throw new Error("Download timed out, try again");
-  } finally {
-    clearTimeout(t);
   }
   if (!res.ok) throw new Error("Download failed");
   const blob = await res.blob();
@@ -88,7 +73,7 @@ export async function downloadFile(fileId: string, fileName: string) {
 }
 
 export async function deleteFile(fileId: string) {
-  const res = await fetch(`${FILE_URL}/files/${fileId}`, { method: "DELETE", credentials: "include" });
+  const res = await authedFetch(`${FILE_URL}/files/${fileId}`, { method: "DELETE" });
   const json = await res.json().catch(() => null);
   if (!res.ok || !json?.success) throw new Error(json?.error?.message || "Delete failed");
 }

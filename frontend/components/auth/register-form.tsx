@@ -10,10 +10,10 @@ import { signup } from "@/lib/api/auth";
 import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
-/** Real registration: POST auth-service /auth/signup, cookie session. */
+/** Real registration: POST /auth/signup, cookie + Bearer session. */
 export function RegisterForm() {
   const router = useRouter();
-  const { refresh } = useSession();
+  const { setUser } = useSession();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState("");
 
@@ -27,8 +27,8 @@ export function RegisterForm() {
     setPending(true);
     setError("");
     try {
-      await signup(name, email, password);
-      await refresh();
+      const session = await signup(name, email, password);
+      setUser(session.user);
       router.push(ROUTES.dashboard);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

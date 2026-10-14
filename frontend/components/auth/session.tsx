@@ -4,8 +4,8 @@ import * as React from "react";
 import { me as fetchMe, logout as apiLogout, refreshSession } from "@/lib/api/auth";
 
 /**
- * Real session: reads GET /auth/me (HttpOnly cookie).
- * No localStorage, no demo user. Unauthenticated -> null user.
+ * Real session: reads GET /auth/me (HttpOnly cookie + Bearer fallback).
+ * No localStorage user, no demo user. Unauthenticated -> null user.
  */
 
 export interface SessionUser {
@@ -20,6 +20,7 @@ interface SessionValue {
   loading: boolean;
   workspace: string;
   refresh: () => Promise<void>;
+  setUser: (u: SessionUser | null) => void;
   signOut: () => Promise<void>;
 }
 
@@ -32,8 +33,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
+      // api("/auth/me") already does one silent-refresh + retry internally.
+      // Keep one outer fallback for cold-start races where the first refresh
+      // itself hit a waking backend.
       const data = await fetchMe().catch(async () => {
-        // One silent-refresh attempt before giving up (covers 15m expiry).
         const ok = await refreshSession();
         if (!ok) return null;
         return fetchMe().catch(() => null);
@@ -74,6 +77,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       loading,
       workspace: domain ? domain.split(".")[0] : "workspace",
       refresh,
+      setUser,
       signOut: async () => {
         await apiLogout().catch(() => null);
         setUser(null);

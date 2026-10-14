@@ -10,10 +10,10 @@ import { login } from "@/lib/api/auth";
 import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
-/** Real sign-in: POST auth-service /auth/login, cookie session. */
+/** Real sign-in: POST /auth/login, cookie + Bearer session. */
 export function LoginForm() {
   const router = useRouter();
-  const { refresh } = useSession();
+  const { setUser } = useSession();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState("");
 
@@ -26,8 +26,11 @@ export function LoginForm() {
     setPending(true);
     setError("");
     try {
-      await login(email, password);
-      await refresh();
+      // Use the login response's user directly — no second /me roundtrip.
+      // The old flow (login then refresh→me) stayed on this page whenever
+      // the follow-up hit a cold-starting backend or a cookie race.
+      const session = await login(email, password);
+      setUser(session.user);
       router.push(ROUTES.dashboard);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");

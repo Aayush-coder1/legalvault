@@ -1,16 +1,44 @@
 # Render Blueprint — LegalVault (5 backends + Next.js frontend)
 # Deploy: push this file at repo root, then Render Dashboard → New → Blueprint → select repo.
-# Secrets are NOT in this file — add them manually per service in the Dashboard
-# (Environment tab). What stays here is only build/start commands plus
-# non-secret wiring (ports, internal URLs, JWT labels).
+#
+# AFTER first sync, set SECRETS per service (Dashboard → service → Environment).
+# Keys marked `sync: false` are placeholders: Blueprint creates them empty and
+# NEVER overwrites your dashboard values on later syncs. Everything with a
+# `value:` below is safe non-secret wiring and IS re-applied on every sync.
+#
+# Secret checklist:
+#   legalvault-auth:   MONGO_URI, JWT_PRIVATE_KEY, JWT_PUBLIC_KEY
+#   legalvault-crypto: MONGO_URI (same Atlas string), CRYPTO_MASTER_KEY,
+#                      B2_ENDPOINT, B2_KEY_ID, B2_APP_KEY, B2_BUCKET
+#   others + frontend: no secrets required.
+#
+# Key formats:
+#   MONGO_URI         mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/legalvault
+#   JWT_PRIVATE_KEY   full PEM from `npm run gen:keys`, newlines as literal \n
+#                     (one line: -----BEGIN PRIVATE KEY-----\nMIIE... \n-----END PRIVATE KEY-----)
+#   JWT_PUBLIC_KEY    full PEM from `npm run gen:keys`, same \n escaping
+#   CRYPTO_MASTER_KEY base64 of 32 bytes:
+#                     node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+#   B2_ENDPOINT       your bucket's S3 Endpoint WITH https://
+#                     (B2 console → bucket → S3 Endpoint, e.g. https://s3.us-east-005.backblazeb2.com)
+#   B2_REGION         region matching the endpoint (e.g. us-east-005)
+#   B2_KEY_ID         B2 application key ID (limited to this bucket)
+#   B2_APP_KEY        B2 application key secret (shown once at creation)
+#   B2_BUCKET         bucket name, e.g. legalvault
+#
 # NOTE: backend-to-backend uses public https URLs (not private hostnames),
 # pinned to the live service URLs so Blueprint syncs can't rewire them to
-# duplicates. Each service listens on its PORT below (explicit PORT wins).
+# duplicates. Each service listens on its PORT below (explicit PORT wins;
+# Render injects its own PORT at runtime and every service reads PORT first).
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
-  # ---------- auth-service :4001 ----------
-  # MANUAL SECRETS: MONGO_URI, JWT_PRIVATE_KEY, JWT_PUBLIC_KEY
+  # ---------- auth-service :4001 (signup/login, RS256 JWT, JWKS, cookies) ----------
+  # Reads (src/config/index.js + services/auth.service.js):
+  #   REQUIRED: MONGO_URI, JWT_PRIVATE_KEY, JWT_PUBLIC_KEY
+  #   Wiring:   PORT/AUTH_PORT, JWT_KID, JWT_ISSUER, JWT_AUDIENCE,
+  #             ACCESS_TTL (+optional ACCESS_TTL_MS), REFRESH_TTL (+optional
+  #             REFRESH_TTL_DAYS), FRONTEND_URL, NODE_ENV, COOKIE_SAMESITE
   - type: web
     name: legalvault-auth
     runtime: node
@@ -28,6 +56,12 @@ services:
         value: "4001"
       - key: AUTH_PORT
         value: "4001"
+      - key: MONGO_URI
+        sync: false # SECRET — Atlas connection string (…mongodb.net/legalvault)
+      - key: JWT_PRIVATE_KEY
+        sync: false # SECRET — RS256 private PEM, \n-escaped single line
+      - key: JWT_PUBLIC_KEY
+        sync: false # SECRET — RS256 public PEM, \n-escaped single line
       - key: JWT_KID
         value: legalvault-1
       - key: JWT_ISSUER
@@ -38,11 +72,16 @@ services:
         value: 15m
       - key: REFRESH_TTL
         value: 7d
+      - key: COOKIE_SAMESITE
+        value: none # must be `none` (with Secure) for cross-site frontend↔gateway cookies
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
-  # ---------- crypto-proxy :4004 ----------
-  # MANUAL SECRETS: MONGO_URI, CRYPTO_MASTER_KEY, B2_ENDPOINT, B2_KEY_ID, B2_APP_KEY, B2_BUCKET
+  # ---------- crypto-proxy :4004 (tenant keys, AES-256-GCM, MongoDB + B2) ----------
+  # Reads (src/config/index.js):
+  #   REQUIRED: MONGO_URI, CRYPTO_MASTER_KEY, B2_ENDPOINT, B2_KEY_ID, B2_APP_KEY, B2_BUCKET
+  #   Wiring:   PORT/CRYPTO_PORT, JWKS_URL, JWT_ISSUER, JWT_AUDIENCE,
+  #             B2_REGION, FRONTEND_URL, NODE_ENV
   - type: web # change to `pserv` (private) on a paid plan to hide it from the internet
     name: legalvault-crypto
     runtime: node
@@ -60,19 +99,34 @@ services:
         value: "4004"
       - key: CRYPTO_PORT
         value: "4004"
+      - key: MONGO_URI
+        sync: false # SECRET — same Atlas string as auth-service
+      - key: CRYPTO_MASTER_KEY
+        sync: false # SECRET — base64 32 bytes (see header)
+      - key: B2_ENDPOINT
+        sync: false # SECRET — https://s3.<region>.backblazeb2.com
+      - key: B2_KEY_ID
+        sync: false # SECRET — B2 application key ID
+      - key: B2_APP_KEY
+        sync: false # SECRET — B2 application key secret
+      - key: B2_BUCKET
+        sync: false # SECRET — bucket name, e.g. legalvault
+      - key: B2_REGION
+        value: us-east-005 # must match B2_ENDPOINT's region
       - key: JWKS_URL
         value: https://legalvault-auth.onrender.com/auth/jwks.json # public URL (see header note)
       - key: JWT_ISSUER
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
-      - key: B2_REGION
-        value: us-east-1
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
-  # ---------- case-service :4002 ----------
-  # MANUAL SECRETS: none required (MONGO_URI optional — uses crypto-proxy for storage)
+  # ---------- case-service :4002 (cases + notes, verifies JWT via JWKS) ----------
+  # Reads (src/config/index.js):
+  #   REQUIRED: none (MONGO_URI optional — storage goes through crypto-proxy)
+  #   Wiring:   PORT/CASE_PORT, JWKS_URL, JWT_ISSUER, JWT_AUDIENCE,
+  #             CRYPTO_PROXY_URL, FRONTEND_URL, NODE_ENV
   - type: web
     name: legalvault-case
     runtime: node
@@ -101,8 +155,11 @@ services:
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
-  # ---------- file-service :4003 ----------
-  # MANUAL SECRETS: none required (storage secrets live in crypto-proxy)
+  # ---------- file-service :4003 (upload/download, verifies JWT via JWKS) ----------
+  # Reads (src/config/index.js):
+  #   REQUIRED: none (B2 secrets live in crypto-proxy only)
+  #   Wiring:   PORT/FILE_PORT, JWKS_URL, JWT_ISSUER, JWT_AUDIENCE,
+  #             CRYPTO_PROXY_URL, FRONTEND_URL, NODE_ENV
   - type: web
     name: legalvault-file
     runtime: node
@@ -132,7 +189,10 @@ services:
         value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- api-gateway :4000 (single public entry point for the frontend) ----------
-  # MANUAL SECRETS: none required
+  # Reads (src/config/index.js):
+  #   REQUIRED: none
+  #   Wiring:   PORT/GATEWAY_PORT, AUTH_URL, CASE_URL, FILE_URL,
+  #             GATEWAY_TIMEOUT_MS, GATEWAY_BODY_LIMIT_MB, FRONTEND_URL, NODE_ENV
   - type: web
     name: legalvault-gateway
     runtime: node
@@ -164,7 +224,12 @@ services:
         value: https://legalvault-frontend-hdo5.onrender.com
 
   # ---------- frontend :3000 (Next.js — talks ONLY to the gateway's public URL) ----------
-  # MANUAL SECRETS: none required
+  # Reads (lib/api/client.ts, build-time inlined):
+  #   REQUIRED: none (all NEXT_PUBLIC_* fall back to localhost for local dev)
+  #   Wiring:   PORT, NODE_ENV, NEXT_PUBLIC_GATEWAY_URL, NEXT_PUBLIC_AUTH_URL,
+  #             NEXT_PUBLIC_CASE_URL, NEXT_PUBLIC_FILE_URL
+  # NOTE: NEXT_PUBLIC_* are baked into the JS bundle at `npm run build`, so
+  # Render's envVars below DO apply — but only after a rebuild + redeploy.
   - type: web
     name: legalvault-frontend
     runtime: node

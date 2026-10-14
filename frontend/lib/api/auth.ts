@@ -1,4 +1,4 @@
-import { AUTH_URL, api, apiJson, silentRefresh } from "@/lib/api/client";
+import { AUTH_URL, api, apiJson, silentRefresh, setTokens, clearTokens } from "@/lib/api/client";
 
 export interface AuthUser {
   id: string;
@@ -7,16 +7,33 @@ export interface AuthUser {
   tenantId: string;
 }
 
-export function signup(name: string, email: string, password: string) {
-  return apiJson<{ user: AuthUser }>(`${AUTH_URL}/auth/signup`, "POST", { name, email, password });
+interface SessionData {
+  user: AuthUser;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
-export function login(email: string, password: string) {
-  return apiJson<{ user: AuthUser }>(`${AUTH_URL}/auth/login`, "POST", { email, password });
+function storeSession(d: SessionData) {
+  if (d.accessToken || d.refreshToken) setTokens(d.accessToken ?? null, d.refreshToken ?? null);
+  return d;
 }
 
-export function logout() {
-  return apiJson<{ ok: boolean }>(`${AUTH_URL}/auth/logout`, "POST");
+export async function signup(name: string, email: string, password: string) {
+  const data = await apiJson<SessionData>(`${AUTH_URL}/auth/signup`, "POST", { name, email, password });
+  return storeSession(data);
+}
+
+export async function login(email: string, password: string) {
+  const data = await apiJson<SessionData>(`${AUTH_URL}/auth/login`, "POST", { email, password });
+  return storeSession(data);
+}
+
+export async function logout() {
+  try {
+    return await apiJson<{ ok: boolean }>(`${AUTH_URL}/auth/logout`, "POST");
+  } finally {
+    clearTokens();
+  }
 }
 
 export function me() {
