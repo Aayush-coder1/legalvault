@@ -51,12 +51,34 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 app.get("/health", (req, res) => res.json({ ok: true, service: "gateway" }));
-app.get("/readyz", (req, res) => res.json({
-  ok: true,
-  service: "gateway",
-  uptime: process.uptime(),
-  upstreams: { auth: config.authUrl, case: config.caseUrl, file: config.fileUrl },
-}));
+// Deep readiness: actually dials each upstream's /health so wiring problems
+// (wrong URL, DNS, refused, down service) show up in one browser hit instead
+// of surfacing later as 502s on real requests.
+async function probeUpstream(base) {
+  const url = `${base.replace(/\/$/, "")}/health`;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    return { ok: r.ok, status: r.status };
+  } catch (e) {
+    const cause = e && e.cause ? ` (${e.cause.code || e.cause.message})` : "";
+    return { ok: false, error: `${e && e.message}${cause}` };
+  }
+}
+app.get("/readyz", async (req, res) => {
+  const [auth, caseSvc, fileSvc] = await Promise.all([
+    probeUpstream(config.authUrl),
+    probeUpstream(config.caseUrl),
+    probeUpstream(config.fileUrl),
+  ]);
+  const ok = auth.ok && caseSvc.ok && fileSvc.ok;
+  res.status(ok ? 200 : 503).json({
+    ok,
+    service: "gateway",
+    uptime: process.uptime(),
+    upstreams: { auth: config.authUrl, case: config.caseUrl, file: config.fileUrl },
+    reachability: { auth, case: caseSvc, file: fileSvc },
+  });
+});
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
@@ -118,7 +140,10 @@ function proxyTo(targetBase) {
     } catch (e) {
       if (e && e.status === 413) return res.status(413).json({ success: false, error: { code: "TOO_LARGE", message: "Body too large" } });
       const timeout = e && (e.name === "TimeoutError" || e.name === "AbortError");
-      console.error(`rid=${rid} ${req.method} ${req.originalUrl} -> ${targetUrl} ${timeout ? "UPSTREAM_TIMEOUT" : "BAD_GATEWAY"} ${e && e.message}`);
+      // Surface the underlying reason (ENOTFOUND = bad hostname, ECONNREFUSED =
+      // wrong port / service down) — "fetch failed" alone hides it.
+      const cause = e && e.cause ? ` cause=${e.cause.code || e.cause.message}` : "";
+      console.error(`rid=${rid} ${req.method} ${req.originalUrl} -> ${targetUrl} ${timeout ? "UPSTREAM_TIMEOUT" : "BAD_GATEWAY"} ${e && e.message}${cause}`);
       const err = new Error(timeout ? "Upstream timeout" : "Upstream unavailable");
       err.status = timeout ? 504 : 502;
       err.code = timeout ? "UPSTREAM_TIMEOUT" : "BAD_GATEWAY";
@@ -128,9 +153,10 @@ function proxyTo(targetBase) {
 }
 
 // Single entry point: route by prefix, preserve path downstream.
-app.use("/auth", proxyTo(config.authUrl));                    // -> :4001/auth/...
-app.use(["/cases", "/notes"], proxyTo(config.caseUrl));       // -> :4002/cases..., /notes...
-app.use("/files", proxyTo(config.fileUrl));                   // -> :4003/files...
+// Targets come from env (AUTH_URL / CASE_URL / FILE_URL) — see render.yaml.
+app.use("/auth", proxyTo(config.authUrl));
+app.use(["/cases", "/notes"], proxyTo(config.caseUrl));
+app.use("/files", proxyTo(config.fileUrl));
 
 app.use((req, res) => res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Not found" } }));
 
