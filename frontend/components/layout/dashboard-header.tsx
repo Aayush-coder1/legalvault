@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Brand } from "@/components/layout/brand";
 import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
@@ -18,9 +19,12 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
   return (
     <header className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="min-w-0">
-          <h1 className="truncate text-[15px] font-semibold text-white">{title}</h1>
-          {subtitle ? <p className="truncate text-[13px] text-zinc-500">{subtitle}</p> : null}
+        <div className="flex min-w-0 items-center gap-4">
+          <Brand href={ROUTES.dashboard} />
+          <div className="hidden min-w-0 border-l border-white/10 pl-4 min-[420px]:block">
+            <h1 className="truncate text-[15px] font-semibold text-white">{title}</h1>
+            {subtitle ? <p className="truncate text-[13px] text-zinc-500">{subtitle}</p> : null}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden items-center gap-2.5 sm:flex">
