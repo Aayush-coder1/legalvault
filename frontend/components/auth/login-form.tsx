@@ -13,7 +13,7 @@ import { ROUTES } from "@/lib/config/constants";
 /** Real sign-in: POST /auth/login, cookie + Bearer session. */
 export function LoginForm() {
   const router = useRouter();
-  const { setUser } = useSession();
+  const { setUser, warming } = useSession();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState("");
 
@@ -48,8 +48,8 @@ export function LoginForm() {
         <Input id="password" name="password" type="password" autoComplete="current-password" placeholder="••••••••" required />
       </Field>
       {error ? <p className="text-[13px] text-red-400">{error}</p> : null}
-      <Button type="submit" className="w-full" size="lg" disabled={pending}>
-        {pending ? "Signing in…" : "Sign in"}
+      <Button type="submit" className="w-full" size="lg" disabled={pending || warming}>
+        {warming ? "Waking up services…" : pending ? "Signing in…" : "Sign in"}
       </Button>
       <p className="text-center text-[13px] text-zinc-500">
         New to LegalVault?{" "}

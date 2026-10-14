@@ -2,10 +2,15 @@
 
 import * as React from "react";
 import { me as fetchMe, logout as apiLogout, refreshSession } from "@/lib/api/auth";
+import { warmBackend } from "@/lib/api/warmup";
 
 /**
  * Real session: reads GET /auth/me (HttpOnly cookie + Bearer fallback).
  * No localStorage user, no demo user. Unauthenticated -> null user.
+ *
+ * On mount it first warms the backend (Render free tier sleeps) — one
+ * /readyz ping fans out and boots gateway + auth + case + file + crypto —
+ * so sign-in and data calls don't hit sleeping services.
  */
 
 export interface SessionUser {
@@ -18,6 +23,8 @@ export interface SessionUser {
 interface SessionValue {
   user: SessionUser | null;
   loading: boolean;
+  /** True while the cold-start warmup is still waking backend services. */
+  warming: boolean;
   workspace: string;
   refresh: () => Promise<void>;
   setUser: (u: SessionUser | null) => void;
@@ -29,6 +36,7 @@ const SessionContext = React.createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<SessionUser | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [warming, setWarming] = React.useState(true);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -48,9 +56,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    // fetch-once on mount: legitimate data fetch, not cascading render
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
+    let cancelled = false;
+    (async () => {
+      // fetch-once on mount: warm sleeping services, then read the session
+      await warmBackend().catch(() => false);
+      if (cancelled) return;
+      setWarming(false);
+      await refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   // Silent pre-refresh every 13m + on tab focus so idle sessions don't 401.
@@ -75,6 +91,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return {
       user,
       loading,
+      warming,
       workspace: domain ? domain.split(".")[0] : "workspace",
       refresh,
       setUser,
@@ -83,7 +100,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       },
     };
-  }, [user, loading, refresh]);
+  }, [user, loading, warming, refresh]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -58,14 +58,18 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 app.get("/health", (req, res) => res.json({ ok: true, service: "gateway" }));
-// Deep readiness: actually dials each upstream's /health so wiring problems
-// (wrong URL, DNS, refused, down service) show up in one browser hit instead
-// of surfacing later as 502s on real requests.
+// Deep readiness: dials each upstream's /readyz (not just /health) so one
+// browser hit wakes the whole chain — auth (incl. mongo), case/file (which in
+// turn dial crypto-proxy). On Render's free tier a sleeping service takes
+// ~30-60s to boot, longer than one probe timeout, so callers (the frontend
+// warmup) retry this endpoint until `ok` is true; every attempt keeps the
+// sleeping services booting.
 async function probeUpstream(base) {
-  const url = `${base.replace(/\/$/, "")}/health`;
+  const url = `${base.replace(/\/$/, "")}/readyz`;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    return { ok: r.ok, status: r.status };
+    const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    const body = await r.json().catch(() => null);
+    return { ok: r.ok && body?.ok !== false, status: r.status };
   } catch (e) {
     const cause = e && e.cause ? ` (${e.cause.code || e.cause.message})` : "";
     return { ok: false, error: `${e && e.message}${cause}` };

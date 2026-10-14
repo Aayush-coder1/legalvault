@@ -36,7 +36,20 @@ app.use((req, res, next) => {
 });
 // NOTE: multer handles multipart; json only for /files/note route
 app.get("/health", (req, res) => res.json({ ok: true, service: "file" }));
-app.get("/readyz", (req, res) => res.json({ ok: true, service: "file", uptime: process.uptime() }));
+// Deep readiness: dials crypto-proxy so a single gateway /readyz fans out and
+// wakes the whole chain (gateway -> file -> crypto). A waking crypto still
+// returns non-ok, but the request itself boots it on Render's free tier.
+app.get("/readyz", async (req, res) => {
+  let crypto = { ok: false };
+  try {
+    const { fetchWithTimeout } = require("./utils/fetch");
+    const r = await fetchWithTimeout(`${config.cryptoUrl.replace(/\/$/, "")}/health`, {}, 6000);
+    crypto = { ok: r.ok, status: r.status };
+  } catch (e) {
+    crypto = { ok: false, error: (e && e.message) || "unreachable" };
+  }
+  res.status(crypto.ok ? 200 : 503).json({ ok: crypto.ok, service: "file", uptime: process.uptime(), crypto });
+});
 app.use("/", verifyJwt, fileRoutes);
 app.use((req, res) => res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Not found" } }));
 
