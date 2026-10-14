@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Brand } from "@/components/layout/brand";
@@ -8,12 +7,14 @@ import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
 
 export function DashboardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const router = useRouter();
   const { user, signOut } = useSession();
 
   async function handleLogout() {
     await signOut();
-    router.push(ROUTES.landing);
+    // Hard navigation: the dashboard guard redirects to /login the moment the
+    // user becomes null, which would win over a client-side push. A full load
+    // of "/" guarantees landing on the site root (production or localhost).
+    window.location.href = ROUTES.landing;
   }
 
   return (
