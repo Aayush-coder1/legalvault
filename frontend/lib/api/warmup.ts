@@ -6,11 +6,13 @@ import { AUTH_URL } from "@/lib/api/client";
  * gateway's /readyz fans out and wakes everything (gateway -> auth/case/file
  * -> crypto-proxy), so the frontend fires this on load and retries until the
  * chain reports ready (or the budget runs out — login still attempted then).
+ * Probes are spaced 1 minute apart — the single hit per attempt is enough to
+ * keep the sleeping services booting; no rapid-fire retries.
  */
 
 const ATTEMPT_TIMEOUT_MS = 25000;
-const RETRY_INTERVAL_MS = 5000;
-const DEFAULT_BUDGET_MS = 120000;
+const RETRY_INTERVAL_MS = 60000;
+const DEFAULT_BUDGET_MS = 180000;
 
 async function probeOnce(): Promise<boolean> {
   const ctrl = new AbortController();

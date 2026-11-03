@@ -43,7 +43,7 @@ app.get("/readyz", async (req, res) => {
   let crypto = { ok: false };
   try {
     const { fetchWithTimeout } = require("./utils/fetch");
-    const r = await fetchWithTimeout(`${config.cryptoUrl.replace(/\/$/, "")}/health`, {}, 6000);
+    const r = await fetchWithTimeout(`${config.cryptoUrl.replace(/\/$/, "")}/health`, {}, 3000);
     crypto = { ok: r.ok, status: r.status };
   } catch (e) {
     crypto = { ok: false, error: (e && e.message) || "unreachable" };

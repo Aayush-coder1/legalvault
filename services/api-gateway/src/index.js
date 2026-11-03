@@ -75,13 +75,18 @@ async function probeUpstream(base) {
     return { ok: false, error: `${e && e.message}${cause}` };
   }
 }
-app.get("/readyz", async (req, res) => {
+
+async function pingUpstreams() {
   const [auth, caseSvc, fileSvc] = await Promise.all([
     probeUpstream(config.authUrl),
     probeUpstream(config.caseUrl),
     probeUpstream(config.fileUrl),
   ]);
-  const ok = auth.ok && caseSvc.ok && fileSvc.ok;
+  return { ok: auth.ok && caseSvc.ok && fileSvc.ok, auth, case: caseSvc, file: fileSvc };
+}
+
+app.get("/readyz", async (req, res) => {
+  const { ok, auth, case: caseSvc, file: fileSvc } = await pingUpstreams();
   res.status(ok ? 200 : 503).json({
     ok,
     service: "gateway",
@@ -195,6 +200,15 @@ app.use((err, req, res, next) => {
 });
 
 const server = app.listen(config.port, () => console.log(`api-gateway on :${config.port}`));
+
+// Keep-alive: while this process is up, dial each upstream's /readyz every 60s
+// (case/file fan out further to crypto-proxy), so the whole chain wakes each
+// other on a 1-minute cadence instead of services sleeping on Render free tier.
+const keepAlive = setInterval(() => {
+  pingUpstreams().catch(() => {});
+}, 60 * 1000);
+keepAlive.unref();
+pingUpstreams().catch(() => {});
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e && e.message));
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e && e.message));
 for (const sig of ["SIGTERM", "SIGINT"]) {
