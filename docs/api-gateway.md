@@ -41,6 +41,7 @@ In Docker, `AUTH_URL/CASE_URL/FILE_URL` use service names (`http://auth-service:
 - No auth logic here: services verify JWT via JWKS themselves.
 - Forwards `Authorization`, cookies (incl. multi `Set-Cookie`), `x-request-id`.
 - `GET /health`, `GET /readyz` are gateway-local (readyz lists upstreams).
+- Gateway keeps upstreams awake: `/readyz` fan-out + internal 60s keep-alive. See `docs/keep-alive.md`.
 - 502 `BAD_GATEWAY` = downstream down, 504 `UPSTREAM_TIMEOUT` = downstream too slow (30s).
 - Body limit 30MB (covers 25MB file uploads).
 - Basic per-IP rate limit (1000 req / 15 min); auth-service enforces its own stricter limit.
