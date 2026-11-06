@@ -24,6 +24,11 @@ Flow: `Next.js → auth/case/file → crypto-proxy → MongoDB / B2` (only locke
 
 - **Architecture Diagram:** [Architecture Diagram](docs/architecture.svg)
 - **Interactive Traffic Model:** [View LegalVault Simulation on Breakscale](https://breakscale.tech/?s=xtcZJPGSEuJYLg#k=aeI-Gssx8x7JSn1OVgb11w)
+- **Live system topology:** log in → **System** (`/dashboard/system-topology`) shows every real
+  request moving through gateway → services → crypto-proxy → MongoDB / B2, with req/s, P95,
+  error rate and crypto-proxy load. **Open live-calibrated design** opens the same topology in
+  BreakScale with the measured numbers. Needs the gateway running (`npm run dev:gateway`, :4000).
+  Details: [docs/telemetry.md](docs/telemetry.md)
 
 ![LegalVault Breakscale Simulation](docs/breakscale-simulation.png)
 

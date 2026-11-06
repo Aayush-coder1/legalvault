@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const config = require("./config");
+const telemetry = require("./telemetry/setup");
 const authRoutes = require("./routes/auth.routes");
 
 const app = express();
@@ -13,6 +14,8 @@ app.use((req, res, next) => {
   res.setHeader("x-request-id", req.requestId);
   next();
 });
+// Live request telemetry (non-blocking; never fails a request). See packages/telemetry.
+app.use(telemetry.middleware());
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 app.use(cors({
@@ -63,6 +66,8 @@ app.get("/readyz", (req, res) => {
   const mongo = mongoose.connection.readyState === 1;
   res.status(mongo ? 200 : 503).json({ ok: mongo, service: "auth", mongo, uptime: process.uptime() });
 });
+// Recent telemetry events for the gateway's live topology stream (sanitized, optional token).
+app.get("/telemetry/recent", telemetry.recentHandler());
 app.use("/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 200 }), authRoutes);
 app.use((req, res) => res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Not found" } }));
 
@@ -81,6 +86,8 @@ function mongoOpts() {
     socketTimeoutMS: 30000,
     maxPoolSize: 20,
     retryWrites: true,
+    // Emits per-command timings for the live topology (command name + collection only).
+    monitorCommands: telemetry.enabled,
     appName: "legalvault-auth",
   };
   // Atlas non-SRV host (mongodb://...mongodb.net) needs explicit TLS;
@@ -95,6 +102,7 @@ mongoose.connection.on("reconnected", () => console.log("auth-service: mongo rec
 
 mongoose.connect(config.mongoUri, mongoOpts()).then(() => {
   console.log("auth-service: mongo connected");
+  telemetry.attachMongo(mongoose.connection.getClient());
   const server = app.listen(config.port, () => console.log(`auth-service on :${config.port}`));
   for (const sig of ["SIGTERM", "SIGINT"]) {
     process.on(sig, () => {

@@ -3,6 +3,9 @@ const crypto = require("crypto");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const config = require("./config");
+const telemetry = require("./telemetry/setup");
+const { TelemetryHub } = require("./telemetry/hub");
+const { createTelemetryRouter } = require("./telemetry/routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -13,6 +16,9 @@ app.use((req, res, next) => {
   res.setHeader("x-request-id", req.requestId);
   next();
 });
+
+// Live request telemetry (non-blocking; never fails a request). See packages/telemetry.
+app.use(telemetry.middleware());
 
 app.use(cookieParser());
 app.use(cors({
@@ -98,6 +104,29 @@ app.get("/readyz", async (req, res) => {
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
+// ---- Live telemetry: gateway merges every service's request buffer ----
+// GET /api/v1/telemetry/stream (SSE) and /api/v1/telemetry/stats (JSON).
+// Upstreams are only polled while a dashboard is connected.
+const telemetryHub = new TelemetryHub({
+  local: telemetry,
+  upstreams: [
+    { name: "auth-service", url: config.authUrl },
+    { name: "case-service", url: config.caseUrl },
+    { name: "file-service", url: config.fileUrl },
+    { name: "crypto-proxy", url: config.cryptoUrl },
+  ],
+  pollMs: config.telemetry.pollMs,
+  windowMs: config.telemetry.windowMs,
+  token: config.telemetry.token,
+});
+app.use("/api/v1/telemetry", createTelemetryRouter({
+  hub: telemetryHub,
+  authUrl: config.authUrl,
+  requireAuth: config.telemetry.requireAuth,
+  maxClients: config.telemetry.maxClients,
+  enabled: telemetry.enabled,
+}));
+
 // Read raw body (JSON + multipart) so we can forward untouched.
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -136,6 +165,10 @@ const RES_HOP = new Set([
   "access-control-expose-headers",
 ]);
 
+// Upstream calls are timed for telemetry; a failed hop (502/504) shows up
+// on the live topology even when the upstream never saw the request.
+const trackedFetch = telemetry.wrapFetch((url, opts) => fetch(url, opts));
+
 function proxyTo(targetBase) {
   return async (req, res, next) => {
     const rid = req.requestId;
@@ -149,7 +182,7 @@ function proxyTo(targetBase) {
       headers["x-request-id"] = rid;
       headers["x-forwarded-by"] = "legalvault-gateway";
 
-      const upstream = await fetch(targetUrl, {
+      const upstream = await trackedFetch(targetUrl, {
         method: req.method,
         headers,
         body,

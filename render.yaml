@@ -11,6 +11,8 @@
 #   legalvault-crypto: MONGO_URI (same Atlas string), CRYPTO_MASTER_KEY,
 #                      B2_ENDPOINT, B2_KEY_ID, B2_APP_KEY, B2_BUCKET
 #   others + frontend: no secrets required.
+#   optional (all 5 backends, same value): TELEMETRY_TOKEN — guards each
+#   service's /telemetry/recent; see docs/telemetry.md.
 #
 # Key formats:
 #   MONGO_URI         mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/legalvault
@@ -74,6 +76,8 @@ services:
         value: 7d
       - key: COOKIE_SAMESITE
         value: none # must be `none` (with Secure) for cross-site frontend↔gateway cookies
+      - key: TELEMETRY_TOKEN
+        sync: false # OPTIONAL — same random value on all 5 backends (or leave empty everywhere)
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
@@ -119,6 +123,8 @@ services:
         value: legalvault-auth
       - key: JWT_AUDIENCE
         value: legalvault-app
+      - key: TELEMETRY_TOKEN
+        sync: false # OPTIONAL — same random value on all 5 backends (or leave empty everywhere)
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
@@ -152,6 +158,8 @@ services:
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
         value: https://legalvault-crypto.onrender.com
+      - key: TELEMETRY_TOKEN
+        sync: false # OPTIONAL — same random value on all 5 backends (or leave empty everywhere)
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
@@ -185,6 +193,8 @@ services:
         value: legalvault-app
       - key: CRYPTO_PROXY_URL
         value: https://legalvault-crypto.onrender.com
+      - key: TELEMETRY_TOKEN
+        sync: false # OPTIONAL — same random value on all 5 backends (or leave empty everywhere)
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 
@@ -216,10 +226,14 @@ services:
         value: https://legalvault-case.onrender.com
       - key: FILE_URL
         value: https://legalvault-file.onrender.com
+      - key: CRYPTO_URL
+        value: https://legalvault-crypto.onrender.com # read-only: live telemetry (docs/telemetry.md)
       - key: GATEWAY_TIMEOUT_MS
         value: "30000"
       - key: GATEWAY_BODY_LIMIT_MB
         value: "30"
+      - key: TELEMETRY_TOKEN
+        sync: false # OPTIONAL — same random value on all 5 backends (or leave empty everywhere)
       - key: FRONTEND_URL
         value: https://legalvault-frontend-hdo5.onrender.com
 

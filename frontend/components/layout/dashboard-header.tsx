@@ -1,13 +1,22 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Activity, Briefcase, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Brand } from "@/components/layout/brand";
 import { useSession } from "@/components/auth/session";
 import { ROUTES } from "@/lib/config/constants";
+import { cn } from "@/lib/utils/cn";
+
+const NAV = [
+  { href: ROUTES.dashboard, label: "Cases", icon: Briefcase },
+  { href: ROUTES.systemTopology, label: "System", icon: Activity },
+] as const;
 
 export function DashboardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   const { user, signOut } = useSession();
+  const pathname = usePathname();
 
   async function handleLogout() {
     await signOut();
@@ -28,6 +37,24 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle?:
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-1" aria-label="Dashboard sections">
+            {NAV.map(({ href, label, icon: Icon }) => {
+              const active = href === ROUTES.dashboard ? pathname === href || pathname.startsWith("/dashboard/cases") : pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors [&_svg]:size-4",
+                    active ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white",
+                  )}
+                >
+                  <Icon aria-hidden /> <span className="hidden md:inline">{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
           <div className="hidden items-center gap-2.5 sm:flex">
             <span className="flex size-8 items-center justify-center rounded-full bg-[#e3b341] text-xs font-semibold text-zinc-950" aria-hidden>
               {(user?.name || "L").charAt(0).toUpperCase()}

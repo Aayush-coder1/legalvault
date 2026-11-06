@@ -10,6 +10,8 @@
     "dev:crypto": "npm --prefix services/crypto-proxy run dev",
     "dev:case": "npm --prefix services/case-service run dev",
     "dev:file": "npm --prefix services/file-service run dev",
-    "dev:frontend": "npm --prefix frontend run dev"
+    "dev:frontend": "npm --prefix frontend run dev",
+    "sync:telemetry": "node scripts/sync-telemetry.js",
+    "test:telemetry": "node scripts/sync-telemetry.js --check && npm --prefix packages/telemetry test && npm --prefix services/api-gateway test && npm --prefix services/auth-service test && npm --prefix services/case-service test && npm --prefix services/file-service test && npm --prefix services/crypto-proxy test && npm --prefix frontend test"
   }
 }

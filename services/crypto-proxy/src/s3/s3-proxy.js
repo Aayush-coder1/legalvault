@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const config = require("../config");
+const telemetry = require("../telemetry/setup");
 
 // Backblaze B2 via its S3-compatible API. Same SDK, custom endpoint.
 // keyId = B2 Application Key ID, secret = B2 Application Key.
@@ -19,6 +20,8 @@ const b2 = new S3Client({
     connectionTimeout: 5000,
   },
 });
+// Time every B2 command for the live topology (command name + byte count only; never object keys).
+telemetry.attachS3(b2);
 
 // B2 stores ONLY locked files. Path: tenantId/caseId/fileId.
 function s3Key(tenantId, caseId, fileId) {

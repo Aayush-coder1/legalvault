@@ -1,0 +1,13 @@
+{
+  "name": "@legalvault/telemetry",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-dependency request telemetry for LegalVault services (canonical source; vendored into each service by scripts/sync-telemetry.js)",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

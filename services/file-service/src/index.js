@@ -4,6 +4,7 @@ const multer = require("multer");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const config = require("./config");
+const telemetry = require("./telemetry/setup");
 const verifyJwt = require("./middleware/auth");
 const fileRoutes = require("./routes/file.routes");
 
@@ -14,6 +15,8 @@ app.use((req, res, next) => {
   res.setHeader("x-request-id", req.requestId);
   next();
 });
+// Live request telemetry (non-blocking; never fails a request). See packages/telemetry.
+app.use(telemetry.middleware());
 app.use(cookieParser());
 app.use(cors({
   origin: config.frontendUrl,
@@ -50,6 +53,8 @@ app.get("/readyz", async (req, res) => {
   }
   res.status(crypto.ok ? 200 : 503).json({ ok: crypto.ok, service: "file", uptime: process.uptime(), crypto });
 });
+// Recent telemetry events for the gateway's live topology stream (sanitized, optional token).
+app.get("/telemetry/recent", telemetry.recentHandler());
 app.use("/", verifyJwt, fileRoutes);
 app.use((req, res) => res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Not found" } }));
 
