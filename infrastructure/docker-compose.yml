@@ -1,3 +1,4 @@
+
 services:
   api-gateway:
     build: ../services/api-gateway
@@ -15,11 +16,9 @@ services:
       - auth-service
       - case-service
       - file-service
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - crypto-proxy
+    networks:
+      - legalvault-network
 
   auth-service:
     build: ../services/auth-service
@@ -28,11 +27,8 @@ services:
       - "4001:4001"
     env_file:
       - ../.env
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+    networks:
+      - legalvault-network
 
   crypto-proxy:
     build: ../services/crypto-proxy
@@ -42,13 +38,9 @@ services:
     env_file:
       - ../.env
     depends_on:
-      auth-service:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4004/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - auth-service
+    networks:
+      - legalvault-network
 
   case-service:
     build: ../services/case-service
@@ -58,15 +50,10 @@ services:
     env_file:
       - ../.env
     depends_on:
-      crypto-proxy:
-        condition: service_started
-      auth-service:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - crypto-proxy
+      - auth-service
+    networks:
+      - legalvault-network
 
   file-service:
     build: ../services/file-service
@@ -76,15 +63,10 @@ services:
     env_file:
       - ../.env
     depends_on:
-      crypto-proxy:
-        condition: service_started
-      auth-service:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4003/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - crypto-proxy
+      - auth-service
+    networks:
+      - legalvault-network
 
   frontend:
     build:
@@ -99,3 +81,9 @@ services:
       - "3000:3000"
     depends_on:
       - api-gateway
+    networks:
+      - legalvault-network
+
+networks:
+  legalvault-network:
+    driver: bridge
