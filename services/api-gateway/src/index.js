@@ -6,6 +6,7 @@ const config = require("./config");
 const telemetry = require("./telemetry/setup");
 const { TelemetryHub } = require("./telemetry/hub");
 const { createTelemetryRouter } = require("./telemetry/routes");
+const { connect: connectTelemetryStore, close: closeTelemetryStore } = require("./telemetry/store");
 
 const app = express();
 app.disable("x-powered-by");
@@ -127,6 +128,23 @@ app.use("/api/v1/telemetry", createTelemetryRouter({
   enabled: telemetry.enabled,
 }));
 
+// Historical telemetry from MongoDB (persisted, survives restarts).
+app.get("/api/v1/telemetry/history", async (req, res) => {
+  try {
+    const { from, to, status, since, limit = 100 } = req.query;
+    const query = {};
+    if (from) query.from = from;
+    if (to) query.to = to;
+    if (status) query.status = Number(status);
+    if (since) query.ts = { $gte: Number(since) };
+    const rows = await telemetryStore.find(query, { limit, sort: { ts: -1 } });
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, error: { code: "TELEMETRY_HISTORY_ERROR", message: e.message } });
+  }
+});
+
+
 // Read raw body (JSON + multipart) so we can forward untouched.
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -232,22 +250,37 @@ app.use((err, req, res, next) => {
   res.status(status).json({ success: false, error: { code, message } });
 });
 
-const server = app.listen(config.port, () => console.log(`api-gateway on :${config.port}`));
+(async () => {
+  // Connect to Mongo for persistent telemetry storage (telemetry_events collection, 7-day TTL).
+  if (config.mongoUri && config.telemetry.mongoStore) {
+    try {
+      await connectTelemetryStore(config.mongoUri);
+    } catch (e) {
+      console.error("api-gateway: telemetry mongo connect failed (in-memory only):", e.message);
+    }
+  }
 
-// Keep-alive: while this process is up, dial each upstream's /readyz every 60s
-// (case/file fan out further to crypto-proxy), so the whole chain wakes each
-// other on a 1-minute cadence instead of services sleeping on Render free tier.
-const keepAlive = setInterval(() => {
+  const server = app.listen(config.port, () => console.log(`api-gateway on :${config.port}`));
+
+  // Keep-alive: while this process is up, dial each upstream's /readyz every 60s
+  // (case/file fan out further to crypto-proxy), so the whole chain wakes each
+  // other on a 1-minute cadence instead of services sleeping on Render free tier.
+  const keepAlive = setInterval(() => {
+    pingUpstreams().catch(() => {});
+  }, 60 * 1000);
+  keepAlive.unref();
   pingUpstreams().catch(() => {});
-}, 60 * 1000);
-keepAlive.unref();
-pingUpstreams().catch(() => {});
-process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e && e.message));
-process.on("uncaughtException", (e) => console.error("uncaughtException:", e && e.message));
-for (const sig of ["SIGTERM", "SIGINT"]) {
-  process.on(sig, () => {
-    console.log(`api-gateway ${sig}, draining...`);
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 5000).unref();
-  });
-}
+  process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e && e.message));
+  process.on("uncaughtException", (e) => console.error("uncaughtException:", e && e.message));
+  for (const sig of ["SIGTERM", "SIGINT"]) {
+    process.on(sig, async () => {
+      console.log(`api-gateway ${sig}, draining...`);
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 5000).unref();
+      try { await closeTelemetryStore(); } catch { /* ignore */ }
+    });
+  }
+})().catch((e) => {
+  console.error("api-gateway startup failed:", e.message);
+  process.exit(1);
+});

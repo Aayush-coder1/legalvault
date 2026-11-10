@@ -323,9 +323,9 @@ export function TopologyGraph({ stats, history, onTraffic, paused, pollMs = 1000
   }, [stats]);
 
   return (
-    <div className="overflow-x-auto">
-      <div ref={wrapRef} className="relative w-full min-w-[900px]" style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}>
-        <svg viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} className="absolute inset-0 size-full" aria-hidden>
+    <div className="w-full max-w-full min-h-[400px]">
+      <div ref={wrapRef} className="relative w-full max-w-full" style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}>
+        <svg viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 size-full" aria-hidden>
           <defs>
             <pattern id="lv-grid" width="20" height="20" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="0.8" fill="rgba(255,255,255,0.07)" />
@@ -372,7 +372,7 @@ export function TopologyGraph({ stats, history, onTraffic, paused, pollMs = 1000
             const es = stats?.edges?.[edgeKey(a, b)];
             return (
               <g key={edgeKey(a, b)}>
-                <path d={g.d} fill="none" stroke="rgba(167,139,250,0.45)" strokeWidth={1.2} strokeDasharray="2 4" markerEnd="url(#lv-arrow)" />
+                <path d={g.d} fill="none" stroke="rgba(167,139,250,0.45)" strokeWidth={1.2} strokeDasharray="2 4" />
                 {(es?.rps ?? 0) > 0 ? (
                   <text x={g.mid.x + 6} y={g.mid.y + 12} className="fill-violet-300/70 font-mono" fontSize="10">
                     {fmtRate(es!.rps)}

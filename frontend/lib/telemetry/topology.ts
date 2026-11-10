@@ -21,11 +21,11 @@ export interface TopologyNode {
 
 export const NODES: readonly TopologyNode[] = [
   { id: "client", label: "Browser / Next.js", sub: "client", kind: "client", x: 16, y: 30 },
-  { id: "api-gateway", label: "API gateway", sub: ":4000", kind: "gateway", x: 16, y: 232 },
-  { id: "auth-service", label: "Auth service", sub: ":4001", kind: "service", x: 40, y: 438 },
-  { id: "case-service", label: "Case service", sub: ":4002", kind: "service", x: 282, y: 16 },
-  { id: "file-service", label: "File service", sub: ":4003", kind: "service", x: 290, y: 330 },
-  { id: "crypto-proxy", label: "Crypto proxy", sub: ":4004", kind: "crypto", x: 520, y: 176 },
+  { id: "api-gateway", label: "API gateway", sub: "", kind: "gateway", x: 16, y: 232 },
+  { id: "auth-service", label: "Auth service", sub: "", kind: "service", x: 40, y: 438 },
+  { id: "case-service", label: "Case service", sub: "", kind: "service", x: 282, y: 16 },
+  { id: "file-service", label: "File service", sub: "", kind: "service", x: 290, y: 330 },
+  { id: "crypto-proxy", label: "Crypto proxy", sub: "", kind: "crypto", x: 520, y: 176 },
   { id: "b2", label: "Backblaze B2", sub: "S3 object store", kind: "store", x: 784, y: 70 },
   { id: "mongodb", label: "MongoDB Atlas", sub: "database", kind: "db", x: 742, y: 438 },
 ];

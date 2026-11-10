@@ -226,8 +226,12 @@ services:
         value: https://legalvault-case.onrender.com
       - key: FILE_URL
         value: https://legalvault-file.onrender.com
-      - key: CRYPTO_URL
+      - key: CRYPTO_PROXY_URL
         value: https://legalvault-crypto.onrender.com # read-only: live telemetry (docs/telemetry.md)
+      - key: MONGO_URI
+        sync: false # SECRET — Atlas connection string for telemetry persistence
+      - key: TELEMETRY_REQUIRE_AUTH
+        value: "false" # public /simulator reads telemetry stream without login
       - key: GATEWAY_TIMEOUT_MS
         value: "30000"
       - key: GATEWAY_BODY_LIMIT_MB

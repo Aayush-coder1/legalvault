@@ -21,6 +21,9 @@ const ANIMATE_MAX_AGE_MS = 6000;
 
 export type TrafficListener = (events: EdgeEvent[]) => void;
 
+/** Fetch signature used to open the telemetry SSE stream (always a string URL). */
+export type StreamFetch = (url: string, init?: RequestInit) => Promise<Response>;
+
 export interface TelemetryStreamState {
   status: StreamStatus;
   error: string;
@@ -35,7 +38,14 @@ export interface TelemetryStreamState {
   reconnect: () => void;
 }
 
-export function useTelemetryStream(enabled = true): TelemetryStreamState {
+/**
+ * Live telemetry stream from the gateway.
+ *
+ * @param fetchImpl  fetch function used to open the SSE stream. Defaults to
+ *                   `authedFetch` (logged-in dashboard). Pass plain `fetch` for
+ *                   the public /simulator page, which must work without login.
+ */
+export function useTelemetryStream(enabled = true, fetchImpl: StreamFetch = authedFetch): TelemetryStreamState {
   const [status, setStatus] = React.useState<StreamStatus>("connecting");
   const [error, setError] = React.useState("");
   const [stats, setStats] = React.useState<TelemetryStats | null>(null);
@@ -118,7 +128,7 @@ export function useTelemetryStream(enabled = true): TelemetryStreamState {
       if (stopped) return;
       setStatus((s) => (s === "live" ? "reconnecting" : s === "reconnecting" ? s : "connecting"));
       try {
-        const res = await authedFetch(TELEMETRY_STREAM_URL, {
+        const res = await fetchImpl(TELEMETRY_STREAM_URL, {
           headers: { Accept: "text/event-stream" },
           cache: "no-store",
           signal: ctrl.signal,
@@ -175,4 +185,14 @@ export function useTelemetryStream(enabled = true): TelemetryStreamState {
   }, [enabled, attempt]);
 
   return { status, error, stats, log, history, lastEventAt, onTraffic, reconnect };
+}
+
+/**
+ * Same live telemetry stream, but without auth — for the public /simulator page.
+ * Uses plain `fetch` (no cookies / Bearer token), so it works without login.
+ * Requires the gateway to serve the stream unauthenticated
+ * (TELEMETRY_REQUIRE_AUTH=false).
+ */
+export function usePublicTelemetryStream(enabled = true): TelemetryStreamState {
+  return useTelemetryStream(enabled, fetch);
 }

@@ -157,7 +157,7 @@ class RingBuffer {
  * @param {object} opts
  * @param {string} opts.service        this service's name (one of KNOWN_SERVICES)
  * @param {number} [opts.capacity]     ring buffer size (default 2000)
- * @param {boolean} [opts.enabled]     default: TELEMETRY_ENABLED !== "false"
+ * @param {boolean} [opts.enabled]     default: true
  * @param {string} [opts.token]        default: TELEMETRY_TOKEN (guards /telemetry/recent)
  * @param {Record<string,string>} [opts.targets] base URL -> service name, for outbound calls
  * @param {RegExp[]} [opts.skip]       paths not to record
@@ -166,7 +166,7 @@ class RingBuffer {
  */
 function createTelemetry(opts = {}) {
   const service = String(opts.service || "unknown");
-  const enabled = opts.enabled !== undefined ? !!opts.enabled : process.env.TELEMETRY_ENABLED !== "false";
+  const enabled = opts.enabled !== undefined ? !!opts.enabled : true;
   const token = opts.token !== undefined ? opts.token : process.env.TELEMETRY_TOKEN || "";
   const skip = Array.isArray(opts.skip) ? opts.skip : DEFAULT_SKIP;
   const skipMethods = new Set((Array.isArray(opts.skipMethods) ? opts.skipMethods : ["OPTIONS"]).map((m) => String(m).toUpperCase()));

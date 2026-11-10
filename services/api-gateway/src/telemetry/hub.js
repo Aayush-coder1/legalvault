@@ -11,6 +11,7 @@
  * and failures only mark that service "down" in the health map.
  */
 const { EventEmitter } = require("events");
+const telemetryStore = require("./store");
 
 const NODE_IDS = Object.freeze([
   "client",
@@ -281,6 +282,11 @@ class TelemetryHub extends EventEmitter {
     await Promise.all(this.upstreams.map((u) => this.pollOne(u)));
     this.pullLocal();
     this._prune();
+    // Persist newly ingested events to MongoDB (best-effort, never blocks).
+    const toPersist = this.pending.slice(0);
+    if (toPersist.length) {
+      telemetryStore.insertMany(toPersist).catch(() => {});
+    }
     this.flush();
   }
 
