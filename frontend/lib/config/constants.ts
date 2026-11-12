@@ -29,6 +29,5 @@ export const ROUTES = {
   register: "/register",
   dashboard: "/dashboard",
   simulator: "/simulator",
-  systemTopology: "/dashboard/system-topology",
   caseDetail: (id: string) => `/dashboard/cases/${id}`,
 } as const;

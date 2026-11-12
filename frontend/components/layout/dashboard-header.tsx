@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Briefcase, LogOut } from "lucide-react";
+import { Briefcase, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Brand } from "@/components/layout/brand";
 import { useSession } from "@/components/auth/session";
@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils/cn";
 
 const NAV = [
   { href: ROUTES.dashboard, label: "Cases", icon: Briefcase },
-  { href: ROUTES.systemTopology, label: "System", icon: Activity },
 ] as const;
 
 export function DashboardHeader({ title, subtitle }: { title: string; subtitle?: string }) {
