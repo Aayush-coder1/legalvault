@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { me as fetchMe, logout as apiLogout, refreshSession } from "@/lib/api/auth";
+import { getRefreshToken } from "@/lib/api/client";
 import { warmBackend } from "@/lib/api/warmup";
 
 /**
@@ -70,20 +71,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   // Silent pre-refresh every 13m + on tab focus so idle sessions don't 401.
+  // Skip when there is no session to refresh (avoids hammering /auth/refresh
+  // with a dead refresh token).
   React.useEffect(() => {
     const id = setInterval(async () => {
       if (document.hidden) return;
+      if (!user && !getRefreshToken()) return;
       await refreshSession().catch(() => null);
     }, 13 * 60 * 1000);
     const onVis = () => {
-      if (!document.hidden) refreshSession().catch(() => null);
+      if (!document.hidden) {
+        if (!user && !getRefreshToken()) return;
+        refreshSession().catch(() => null);
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [user]);
 
   const value = React.useMemo<SessionValue>(() => {
     const email = user?.email ?? "";

@@ -35,6 +35,8 @@ export class ApiError extends Error {
 // "broken" on a sleeping backend. Give real requests 35s.
 const DEFAULT_TIMEOUT_MS = 35000;
 const REFRESH_TIMEOUT_MS = 25000;
+const REFRESH_MAX_FAILURES = 3;
+const REFRESH_COOLDOWN_MS = 30_000;
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = DEFAULT_TIMEOUT_MS): Promise<Response> {
   const ctrl = new AbortController();
@@ -102,6 +104,7 @@ export function setTokens(access: string | null | undefined, refresh: string | n
     memRefresh = refresh || null;
     writeStored(REFRESH_KEY, memRefresh);
   }
+  refreshFailures = 0; // new tokens -> circuit breaker resets
 }
 
 export function clearTokens() {
@@ -137,12 +140,18 @@ function captureAuthTokens(data: unknown) {
 // Single-flight silent refresh: at most one POST /auth/refresh in flight.
 // Sends cookie AND body refresh token so it works with or without third-party cookies.
 let refreshInflight: Promise<boolean> | null = null;
+let refreshFailures = 0;
+let lastRefreshAttempt = 0;
 async function silentRefresh(): Promise<boolean> {
+  const now = Date.now();
+  if (now - lastRefreshAttempt < REFRESH_COOLDOWN_MS) return false;
+  if (refreshFailures >= REFRESH_MAX_FAILURES) return false;
   if (refreshInflight) {
     try { await refreshInflight; return true; } catch { return false; }
   }
   refreshInflight = (async () => {
     const rt = getRefreshToken();
+    if (!rt) throw new Error("no refresh token");
     const body = rt ? { refreshToken: rt } : {};
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     const res = await fetchWithTimeout(
@@ -150,9 +159,17 @@ async function silentRefresh(): Promise<boolean> {
       { method: "POST", credentials: "include", headers, body: JSON.stringify(body) },
       REFRESH_TIMEOUT_MS
     );
-    if (!res.ok) throw new Error(`refresh ${res.status}`);
+    lastRefreshAttempt = Date.now();
+    if (!res.ok) {
+      refreshFailures++;
+      throw new Error(`refresh ${res.status}`);
+    }
     const json = await res.json().catch(() => null);
-    if (!json?.success) throw new Error("refresh failed");
+    if (!json?.success) {
+      refreshFailures++;
+      throw new Error("refresh failed");
+    }
+    refreshFailures = 0;
     captureAuthTokens(json.data);
     return true;
   })().finally(() => { refreshInflight = null; });
@@ -187,6 +204,8 @@ export async function api<T>(url: string, init?: RequestInit, retryOn401 = true)
       } catch {
         throw new ApiError("NETWORK_FAIL", "Cannot reach backend", 0);
       }
+    } else if (refreshFailures >= REFRESH_MAX_FAILURES) {
+      clearTokens();
     }
   }
   const data = await parse<T>(res);
@@ -215,6 +234,7 @@ export async function authedFetch(url: string, init: RequestInit = {}, timeoutMs
     if (res.status === 401 && !isNoRetryAuthEndpoint(url)) {
       const ok = await silentRefresh();
       if (ok) res = await fetch(url, { ...withAuth(init), signal: init.signal ?? ctrl.signal });
+      else if (refreshFailures >= REFRESH_MAX_FAILURES) clearTokens();
     }
     return res;
   } finally {
